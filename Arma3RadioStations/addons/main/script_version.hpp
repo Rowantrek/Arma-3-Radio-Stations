@@ -5,7 +5,7 @@
 #define MAJOR 2026
 #define MINOR 10
 #define PATCHLVL 17
-#define BUILD 1
+#define BUILD 2
 
 #define A3R_STRINGIFY(x) #x
 #define A3R_TO_STRING(x) A3R_STRINGIFY(x)
