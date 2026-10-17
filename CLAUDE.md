@@ -2,6 +2,10 @@
 
 Rules and workflow for working on **Arma 3 Radio Stations** (by Rowantrek), a CBA_A3 Arma 3 mod that gives every vehicle, and a placeable object, a synced music radio.
 
+## Changing this file
+
+**Don't modify CLAUDE.md without the user's explicit permission.** If something here looks out of date, or a new rule seems useful, suggest the change and wait for a yes. README, ARCHITECTURE.md and WORKSHOP.md can be updated as part of a change; CLAUDE.md can't.
+
 ## Where things are documented
 
 | Where | What |
