@@ -1,0 +1,16 @@
+name = "Arma 3 Radio Stations"
+author = "Rowantrek"
+prefix = "a3r"
+mainprefix = "z"
+
+[version]
+git_hash = 0
+
+[files]
+include = ["mod.cpp"]
+
+# `hemtt launch` builds, then opens .hemtt/missions/a3r_test.VR in Eden with CBA_A3 from the Workshop
+[hemtt.launch.default]
+workshop = ["450814997"]
+mission = "a3r_test.VR"
+parameters = ["-skipIntro", "-noSplash", "-showScriptErrors", "-world=empty"]

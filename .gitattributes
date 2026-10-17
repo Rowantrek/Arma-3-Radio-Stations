@@ -1,0 +1,18 @@
+* text=auto
+
+# Windows tools and Arma files keep CRLF
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.sqm text eol=crlf
+
+# Shell scripts must keep LF
+*.sh text eol=lf
+
+# Binary assets
+*.ogg binary
+*.wav binary
+*.wss binary
+*.paa binary
+*.p3d binary
+*.pbo binary
+*.bikey binary

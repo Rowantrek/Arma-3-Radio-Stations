@@ -1,0 +1,16 @@
+# HEMTT build output
+.hemttout/
+releases/
+
+# Signing keys - never commit private keys
+*.biprivatekey
+.hemttprivatekey
+
+# Temporary source music for tools/make_demo_audio.sh
+demo_music/
+
+# OS / editor
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/

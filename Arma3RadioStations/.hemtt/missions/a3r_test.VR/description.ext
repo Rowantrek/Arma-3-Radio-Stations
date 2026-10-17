@@ -1,0 +1,21 @@
+// Arma 3 Radio Stations: stations for this mission. The music lives in the mission's radio\ folder,
+// so no music mod is needed, but every player downloads it with the mission.
+//
+// To use in your own mission:
+//   1. Run import_music.ps1 (tools\ in the Arma 3 Radio Stations repository)
+//      -Source <music folder> -Target <your mission folder>
+//      (it creates radio\ with the converted .ogg files and the three .hpp files)
+//   2. Copy the three blocks below into your description.ext. If it already has CfgSounds
+//      or CfgMusic, put the #include line inside your existing class instead.
+
+class CfgSounds {
+    #include "radio\cfgSounds.hpp"
+};
+
+class CfgMusic {
+    #include "radio\cfgMusic.hpp"
+};
+
+class A3R_Stations {
+    #include "radio\stations.hpp"
+};

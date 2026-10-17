@@ -1,0 +1,20 @@
+# Music add-on for Arma 3 Radio Stations - see "For mod makers" in the Arma 3 Radio Stations README.
+# Rename "a3r_mymusic" here, in addons/main/$PBOPREFIX$ and in the CfgPatches class in
+# addons/main/config.cpp, then re-run import_music.ps1.
+name = "My Radio Music"
+author = "Your Name"
+prefix = "a3r_mymusic"
+mainprefix = "z"
+
+[version]
+git_hash = 0
+
+[files]
+include = ["mod.cpp"]
+
+# `hemtt launch` starts Arma with CBA_A3 and Arma 3 Radio Stations from the Workshop, plus this pack.
+# Add Arma 3 Radio Stations' Workshop ID once published, or load a local build by adding to parameters:
+#   '-mod=C:\path\to\Arma3Radio\Arma3RadioStations\.hemttout\build'
+[hemtt.launch.default]
+workshop = ["450814997"]
+parameters = ["-skipIntro", "-noSplash", "-showScriptErrors", "-world=empty"]
