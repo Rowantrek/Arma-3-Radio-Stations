@@ -40,7 +40,7 @@ Arma can't stream audio or play files from a player's own disk. Every player nee
 | &nbsp;&nbsp;`Arma3RadioStations/addons/stations` | Built-in stations and their audio |
 | &nbsp;&nbsp;`Arma3RadioStations/.hemtt/missions/a3r_test.VR` | Test mission: mission-defined station, placed radio, vehicles |
 | [`AddonTemplate/`](AddonTemplate) | **Music add-on template** for making your own music mod. HEMTT project. |
-| [`tools/`](tools) | **Tools**: `import_music.ps1` turns music into stations; `make_demo_audio.sh` synthesizes the placeholder music |
+| [`tools/`](tools) | **Tools**: `import_music.ps1` turns music into stations; `bump_version.ps1` sets the release version; `make_demo_audio.sh` synthesizes the placeholder music |
 
 ---
 
@@ -48,9 +48,10 @@ Arma can't stream audio or play files from a player's own disk. Every player nee
 
 | | |
 |---|---|
-| **Scroll menu** | *Radio: next station* / *Radio: turn off*: when inside a vehicle, or looking at a placed radio within 3 m |
-| **Keybinds** | `Ctrl+]` next station, `Ctrl+[` previous, `Ctrl+\` off. Rebind in *Options > Controls > Configure Addons > Arma 3 Radio Stations* |
-| **Volume** | Inside a vehicle: **music** volume. Placed radios and vehicles heard from outside: **effects** volume |
+| **Scroll menu** | *Radio: next station* / *turn off* / *volume up* / *volume down*: when inside a vehicle, or looking at a placed radio within 3 m |
+| **Keybinds** | `Ctrl+]` next station, `Ctrl+[` previous, `Ctrl+\` off, `Ctrl+=` volume up, `Ctrl+-` volume down. Rebind in *Options > Controls > Configure Addons > Arma 3 Radio Stations* |
+| **Radio volume** | Each radio has its own volume knob (0–100 %, in 10 % steps), shared with everyone who hears it. Turning a vehicle radio down also shortens how far it is heard outside the vehicle |
+| **Your game volume** | Inside a vehicle: **music** volume. Placed radios and vehicles heard from outside: **effects** volume |
 
 Switching station shows the station name and the current song.
 
@@ -60,7 +61,7 @@ Switching station shows the station name and the current song.
 
 ### Placed radios
 
-Place **Music Radio** from *Things > Radios*. In its attributes, set **Radio station** to a station class name (e.g. `A3R_PulseFM`), `random`, or leave it empty for off.
+Place **Music Radio** from *Things > Radios*. In its attributes, set **Radio station** to a station class name (e.g. `A3R_PulseFM`), `random`, or leave it empty for off, and **Radio volume** for its starting volume.
 
 To turn any object into a radio:
 
@@ -80,6 +81,7 @@ this setVariable ["a3r_hasRadio", false, true]; // in the vehicle's init: no rad
 
 ```sqf
 [_vehicle, "A3R_PulseFM"] call A3R_fnc_setStation;   // tune: station class, "random", or "" for off
+[_vehicle, 0.5] call A3R_fnc_setVolume;               // volume 0-1
 call A3R_fnc_getStations;                             // active station class names
 ["A3R_PulseFM"] call A3R_fnc_getTrackAt;              // [track class, seconds into track, play id]
 ```
@@ -156,7 +158,7 @@ Have a music add-on made for your server (see [for mod makers](#for-mod-makers-m
 
 ### Performance
 
-Radios use very little bandwidth: a variable on each radio changes only when someone switches station. The server does no audio work. Each client runs a small check twice a second.
+Radios use very little bandwidth: a variable on each radio changes only when someone switches station or changes its volume. The server does no audio work. Each client runs a small check twice a second.
 
 ---
 
@@ -340,7 +342,7 @@ releases/a3r-<version>.zip
 
 You can rename the `@a3r` folder, for example to `@Arma3RadioStations`. Upload this folder to the Steam Workshop with *Arma 3 Publisher*, or share the ZIP.
 
-- **Version:** set it in `Arma3RadioStations/addons/main/script_version.hpp` before each release.
+- **Version:** releases are numbered by date, `YYYY.MM.DD.N`, where `N` counts the releases made that day, starting at 1. Before each release, run `powershell -ExecutionPolicy Bypass -File tools\bump_version.ps1`. It writes today's date to `Arma3RadioStations/addons/main/script_version.hpp` and increases `N` if you've already released today. The ZIP name drops the leading zeros (e.g. `a3r-2026.2.9.1.zip`), but the mod's config keeps them.
 - **Keys:** each release is signed with a new key, so server owners must replace the old `.bikey` when they update.
 
 ### Changing the built-in stations
@@ -378,7 +380,7 @@ powershell -ExecutionPolicy Bypass -File tools\import_music.ps1 -Source demo_mus
 
 ### How sync works
 
-Every client runs a loop every 0.5 s. For each radio that is on, it works out the current track and offset from `CBA_missionTime`, so all machines agree without any audio traffic. It then plays the track locally with `say3D` (3D, attached to the object) or `playMusic` (inside your own vehicle). The server keeps only a public `a3r_station` variable on each radio and a list of radios that are on.
+Every client runs a loop every 0.5 s. For each radio that is on, it works out the current track and offset from `CBA_missionTime`, so all machines agree without any audio traffic. It then plays the track locally: `playMusic` inside your own vehicle (volume with `fadeMusic`), `playSound3D` for placed radios (with volume; restarted if the radio is moved) and `say3D` for vehicles heard from outside (follows the vehicle; it has no volume, so the radio volume scales its range). The server keeps only public `a3r_station` and `a3r_volume` variables on each radio and a list of radios that are on.
 
 ## Credits
 
