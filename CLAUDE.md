@@ -4,7 +4,7 @@ Rules and workflow for working on **Arma 3 Radio Stations** (by Rowantrek), a CB
 
 ## Changing this file
 
-**Don't modify CLAUDE.md without the user's explicit permission.** If something here looks out of date, or a new rule seems useful, suggest the change and wait for a yes. README, ARCHITECTURE.md and WORKSHOP.md can be updated as part of a change; CLAUDE.md can't.
+**Don't modify CLAUDE.md without the user's explicit permission.** If something here looks out of date, or a new rule seems useful, suggest the change and wait for a yes. README and ARCHITECTURE.md can be updated as part of a change; CLAUDE.md can't.
 
 ## Where things are documented
 
@@ -14,9 +14,7 @@ Rules and workflow for working on **Arma 3 Radio Stations** (by Rowantrek), a CB
 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | How the mod works and why. Enough to understand the design, no more. |
 | **Code and code comments** | The details, and the source of truth. Read the functions involved before changing them, and keep comments short, explaining *why*. |
 | **[README.md](README.md)** | The user manual for players, mission makers, server owners and music add-on makers. |
-| **[WORKSHOP.md](WORKSHOP.md)** | The Steam Workshop description (BBCode), to copy into Arma 3 Publisher. |
-
-When you change behaviour, update the README for anything user-facing, WORKSHOP.md if the features or controls change, and ARCHITECTURE.md for design changes.
+When you change behaviour, update the README for anything user-facing and ARCHITECTURE.md for design changes.
 
 ## Repository layout
 
@@ -73,7 +71,7 @@ ARCHITECTURE.md explains the reasons.
 
 - **Version:** `YYYY.MM.DD.N`, set with `powershell -ExecutionPolicy Bypass -File tools\bump_version.ps1`. Don't edit the numbers by hand.
 - **Padding:** the month and day must stay two digits, because CfgPatches `version` is a decimal number.
-- **Publish:** pushing to `master` runs [.github/workflows/workshop.yml](.github/workflows/workshop.yml). It runs `hemtt release`, uploads to the Workshop with SteamCMD (description from WORKSHOP.md), then tags `v<version>` and creates a GitHub release. It refuses a version that's already tagged, so bump the version before merging. Setup steps are in the workflow's header.
+- **Release:** pushing `Arma3RadioStations/` changes to `master` runs [.github/workflows/release.yml](.github/workflows/release.yml): `hemtt release`, then a GitHub release `v<version>` with the zip. It refuses an already-tagged version, so bump first. The user downloads the release and uploads it to the Workshop by hand with Arma 3 Publisher.
 
 ## Commits and pull requests
 

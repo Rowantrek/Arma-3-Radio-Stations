@@ -1,0 +1,59 @@
+# Builds a signed release with HEMTT and publishes it as a GitHub release when master is updated.
+# The Steam Workshop upload is done by hand: download the release and upload its @a3r folder with
+# Arma 3 Publisher.
+#
+# Each release needs a new version (tools/bump_version.ps1): the job stops if tag v<version> already exists.
+
+name: Release
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'Arma3RadioStations/**'
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write # tag and GitHub release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: arma-actions/hemtt@v1
+
+      - name: Read version
+        id: version
+        working-directory: Arma3RadioStations
+        run: |
+          version=$(hemtt value project.version)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "::error::v$version is already released. Run tools/bump_version.ps1 before merging to master."
+            exit 1
+          fi
+
+      - name: Build release
+        working-directory: Arma3RadioStations
+        run: hemtt release
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "v$VERSION" \
+            "Arma3RadioStations/releases/a3r-$VERSION.zip" \
+            --target "$GITHUB_SHA" --title "v$VERSION" --notes-file - <<EOF
+          Signed build of Arma 3 Radio Stations v$VERSION.
+
+          The mod is the \`@a3r\` folder in \`a3r-$VERSION.zip\`. Servers need the \`.bikey\` from its \`keys\` folder; it changes with every release.
+          EOF
