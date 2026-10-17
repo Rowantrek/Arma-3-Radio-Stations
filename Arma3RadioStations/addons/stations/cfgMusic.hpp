@@ -6,5 +6,6 @@ class A3R_Antistasi_04 { name = "ArmA 3 _ Music - This is War (Marksmen DLC remi
 class A3R_Antistasi_05 { name = "By Morning It's Gone"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_bymorningitsgone.ogg", 1, 1}; duration = 438.4; };
 class A3R_Antistasi_06 { name = "Hatchback Runway Wire"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_hatchbackrunwaywire.ogg", 1, 1}; duration = 257.2; };
 class A3R_Antistasi_07 { name = "Hydra Rain"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_hydrarain.ogg", 1, 1}; duration = 387.48; };
-class A3R_Antistasi_08 { name = "Mavericks Away"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_mavericksaway.ogg", 1, 1}; duration = 246.36; };
-class A3R_Antistasi_09 { name = "Wasted Forty Hours"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_wastedfortyhours.ogg", 1, 1}; duration = 352.76; };
+class A3R_Antistasi_08 { name = "King of the Sky"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_kingofthesky.ogg", 1, 1}; duration = 285.96; };
+class A3R_Antistasi_09 { name = "Mavericks Away"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_mavericksaway.ogg", 1, 1}; duration = 246.36; };
+class A3R_Antistasi_10 { name = "Wasted Forty Hours"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_wastedfortyhours.ogg", 1, 1}; duration = 352.76; };

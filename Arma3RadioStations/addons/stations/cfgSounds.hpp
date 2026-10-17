@@ -13,7 +13,9 @@ class A3R_Antistasi_06 { name = "Hatchback Runway Wire"; sound[] = {"\z\a3r\addo
 class A3R_Antistasi_06_PA { name = "Hatchback Runway Wire"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_hatchbackrunwaywire.ogg", 3.25, 1}; titles[] = {}; };
 class A3R_Antistasi_07 { name = "Hydra Rain"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_hydrarain.ogg", 1.25, 1}; titles[] = {}; };
 class A3R_Antistasi_07_PA { name = "Hydra Rain"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_hydrarain.ogg", 3.25, 1}; titles[] = {}; };
-class A3R_Antistasi_08 { name = "Mavericks Away"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_mavericksaway.ogg", 1.25, 1}; titles[] = {}; };
-class A3R_Antistasi_08_PA { name = "Mavericks Away"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_mavericksaway.ogg", 3.25, 1}; titles[] = {}; };
-class A3R_Antistasi_09 { name = "Wasted Forty Hours"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_wastedfortyhours.ogg", 1.25, 1}; titles[] = {}; };
-class A3R_Antistasi_09_PA { name = "Wasted Forty Hours"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_wastedfortyhours.ogg", 3.25, 1}; titles[] = {}; };
+class A3R_Antistasi_08 { name = "King of the Sky"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_kingofthesky.ogg", 1.25, 1}; titles[] = {}; };
+class A3R_Antistasi_08_PA { name = "King of the Sky"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_kingofthesky.ogg", 3.25, 1}; titles[] = {}; };
+class A3R_Antistasi_09 { name = "Mavericks Away"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_mavericksaway.ogg", 1.25, 1}; titles[] = {}; };
+class A3R_Antistasi_09_PA { name = "Mavericks Away"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_mavericksaway.ogg", 3.25, 1}; titles[] = {}; };
+class A3R_Antistasi_10 { name = "Wasted Forty Hours"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_wastedfortyhours.ogg", 1.25, 1}; titles[] = {}; };
+class A3R_Antistasi_10_PA { name = "Wasted Forty Hours"; sound[] = {"\z\a3r\addons\stations\data\a3r_antistasi_wastedfortyhours.ogg", 3.25, 1}; titles[] = {}; };
