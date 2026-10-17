@@ -74,7 +74,7 @@ ARCHITECTURE.md explains the reasons.
 
 - **Version:** `YYYY.MM.DD.N`, set with `powershell -ExecutionPolicy Bypass -File tools\bump_version.ps1`. Don't edit the numbers by hand.
 - **Padding:** the month and day must stay two digits, because CfgPatches `version` is a decimal number.
-- **Build:** `hemtt release`. The user publishes to the Workshop with Arma 3 Publisher.
+- **Publish:** pushing to `master` runs [.github/workflows/workshop.yml](.github/workflows/workshop.yml). It runs `hemtt release`, uploads to the Workshop with SteamCMD (description from WORKSHOP.md), then tags `v<version>` and creates a GitHub release. It refuses a version that's already tagged, so bump the version before merging. Setup steps are in the workflow's header.
 
 ## Commits and pull requests
 

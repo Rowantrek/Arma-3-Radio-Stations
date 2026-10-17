@@ -1,0 +1,123 @@
+# Builds a signed release with HEMTT and publishes it to the Steam Workshop when master is updated.
+# The Workshop description comes from the code block in WORKSHOP.md.
+#
+# One-time setup (repository Settings > Secrets and variables > Actions):
+#   Variable WORKSHOP_ITEM_ID   Published file id of the existing Workshop item (the number in its URL).
+#                               Publish the first version once by hand with Arma 3 Publisher to create it.
+#   Secret   STEAM_USERNAME     Steam account that owns the Workshop item (or is a contributor on it).
+#   Secret   STEAM_PASSWORD     Its password. Works only if the account has no Steam Guard.
+#   Secret   STEAM_CONFIG_VDF   Optional, instead of the password for an account with Steam Guard: a saved
+#                               SteamCMD session. Run `steamcmd +login <user> +quit` once on your PC, approve
+#                               Steam Guard, then base64-encode <steamcmd folder>/config/config.vdf into this
+#                               secret. The session expires eventually; refresh it if login starts failing.
+#
+# Each release needs a new version (tools/bump_version.ps1): the job stops if tag v<version> already exists.
+
+name: Publish to Steam Workshop
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'Arma3RadioStations/**'
+      - 'WORKSHOP.md'
+  workflow_dispatch:
+
+concurrency:
+  group: workshop
+  cancel-in-progress: false
+
+permissions:
+  contents: write # tag and GitHub release
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      WORKSHOP_ITEM_ID: ${{ vars.WORKSHOP_ITEM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check setup
+        env:
+          STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
+          STEAM_PASSWORD: ${{ secrets.STEAM_PASSWORD }}
+          STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
+        run: |
+          [ -n "$WORKSHOP_ITEM_ID" ] || { echo "::error::Set the WORKSHOP_ITEM_ID repository variable"; exit 1; }
+          [ -n "$STEAM_USERNAME" ] || { echo "::error::Set the STEAM_USERNAME secret"; exit 1; }
+          [ -n "$STEAM_PASSWORD$STEAM_CONFIG_VDF" ] || { echo "::error::Set the STEAM_PASSWORD (or STEAM_CONFIG_VDF) secret"; exit 1; }
+
+      - uses: arma-actions/hemtt@v1
+
+      - name: Read version
+        id: version
+        working-directory: Arma3RadioStations
+        run: |
+          version=$(hemtt value project.version)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "::error::v$version is already released. Run tools/bump_version.ps1 before merging to master."
+            exit 1
+          fi
+
+      - name: Build release
+        working-directory: Arma3RadioStations
+        run: hemtt release
+
+      - name: Write Workshop item file
+        run: |
+          # Description: the first code block in WORKSHOP.md. VDF strings need \ and " escaped.
+          escape() { sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'; }
+          description=$(awk '/^```/{n++; next} n==1' WORKSHOP.md | escape)
+          [ -n "$description" ] || { echo "::error::No code block found in WORKSHOP.md"; exit 1; }
+          changenote=$(printf 'v%s\n\n%s\n\n%s/%s/commit/%s' "${{ steps.version.outputs.version }}" \
+            "$(git log -1 --format=%s)" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_SHA" | escape)
+          cat > "$RUNNER_TEMP/workshop.vdf" <<EOF
+          "workshopitem"
+          {
+              "appid" "107410"
+              "publishedfileid" "$WORKSHOP_ITEM_ID"
+              "contentfolder" "$GITHUB_WORKSPACE/Arma3RadioStations/.hemttout/release"
+              "changenote" "$changenote"
+              "description" "$description"
+          }
+          EOF
+
+      - uses: andriivitiv/setup-steamcmd@v1
+        id: steamcmd
+
+      - name: Restore Steam session
+        env:
+          STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
+        run: |
+          # Only for accounts with Steam Guard (no STEAM_PASSWORD). Secrets can't be used in a step's if:.
+          [ -n "$STEAM_CONFIG_VDF" ] || { echo "No saved session; logging in with the password."; exit 0; }
+          # SteamCMD may read its config from its own folder or from ~/Steam, so write both
+          for dir in "${{ steps.steamcmd.outputs.directory }}/config" "$HOME/Steam/config"; do
+            mkdir -p "$dir"
+            echo "$STEAM_CONFIG_VDF" | base64 -d > "$dir/config.vdf"
+          done
+
+      - name: Upload to Steam Workshop
+        env:
+          STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
+          STEAM_PASSWORD: ${{ secrets.STEAM_PASSWORD }}
+        run: |
+          # With a password: plain login. Without: the saved session restored above.
+          login=(+login "$STEAM_USERNAME")
+          [ -z "$STEAM_PASSWORD" ] || login+=("$STEAM_PASSWORD")
+          "${{ steps.steamcmd.outputs.executable }}" "${login[@]}" \
+            +workshop_build_item "$RUNNER_TEMP/workshop.vdf" \
+            +quit
+
+      - name: Tag and create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "v$VERSION" Arma3RadioStations/releases/a3r-$VERSION.zip \
+            --target "$GITHUB_SHA" --title "v$VERSION" \
+            --notes "Published to the [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=$WORKSHOP_ITEM_ID). Server owners: use the .bikey in the zip's keys folder."
