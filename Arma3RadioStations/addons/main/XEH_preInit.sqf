@@ -1,6 +1,7 @@
 a3r_schedules = createHashMap;
 a3r_radioClassCache = createHashMap;
 a3r_stationsCache = createHashMap;
+a3r_soundFileCache = createHashMap;
 
 // Station sources. Force these per server (server settings) or per mission (Eden > Addon Options).
 [
@@ -41,25 +42,29 @@ a3r_stationsCache = createHashMap;
 
 if (isServer) then {
     ["a3r_setStation", {_this call A3R_fnc_serverSetStation}] call CBA_fnc_addEventHandler;
+    ["a3r_setVolume", {_this call A3R_fnc_serverSetVolume}] call CBA_fnc_addEventHandler;
 };
 
 if (hasInterface) then {
-    // Default keys: Ctrl+] next, Ctrl+[ previous, Ctrl+\ off. Rebind under Configure > Controls > Configure Addons.
+    // Default keys: Ctrl+] next, Ctrl+[ previous, Ctrl+\ off, Ctrl+= louder, Ctrl+- quieter.
+    // Rebind under Configure > Controls > Configure Addons.
     {
-        _x params ["_id", "_name", "_dir", "_dik"];
+        _x params ["_id", "_name", "_action", "_dik"];
         [
             "Arma 3 Radio Stations", _id, _name,
             compile format ["
                 private _target = [call CBA_fnc_currentUnit] call A3R_fnc_getTarget;
                 if (isNull _target) exitWith {false};
-                [_target, %1] call A3R_fnc_cycleStation;
+                %1;
                 true
-            ", _dir],
+            ", _action],
             "", [_dik, [false, true, false]]
         ] call CBA_fnc_addKeybind;
     } forEach [
-        ["a3r_next", "Next station", 1, 0x1B],
-        ["a3r_prev", "Previous station", -1, 0x1A],
-        ["a3r_off", "Turn radio off", 0, 0x2B]
+        ["a3r_next", "Next station", "[_target, 1] call A3R_fnc_cycleStation", 0x1B],
+        ["a3r_prev", "Previous station", "[_target, -1] call A3R_fnc_cycleStation", 0x1A],
+        ["a3r_off", "Turn radio off", "[_target, 0] call A3R_fnc_cycleStation", 0x2B],
+        ["a3r_volUp", "Volume up", "[_target, 0.1] call A3R_fnc_adjustVolume", 0x0D],
+        ["a3r_volDown", "Volume down", "[_target, -0.1] call A3R_fnc_adjustVolume", 0x0C]
     ];
 };

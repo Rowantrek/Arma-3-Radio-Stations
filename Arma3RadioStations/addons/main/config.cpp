@@ -8,7 +8,9 @@ class CfgPatches {
         weapons[] = {};
         requiredVersion = 2.18;
         requiredAddons[] = {"A3_Data_F_Decade_Loadorder", "cba_main", "cba_settings", "cba_keybinding"};
-        version = MAJOR.MINOR;
+        version = MAJOR.MINOR; // YYYY.MM, see script_version.hpp
+        versionStr = VERSION_STR;
+        versionAr[] = {MAJOR, MINOR, PATCHLVL, BUILD};
     };
 };
 
@@ -29,16 +31,20 @@ class CfgFunctions {
         class main {
             file = "\z\a3r\addons\main\functions";
             class addPlayerActions {};
+            class adjustVolume {};
             class clientUpdate {};
             class cycleStation {};
             class findConfig {};
+            class getSoundFile {};
             class getStations {};
             class getTarget {};
             class getTrackAt {};
             class hasRadio {};
             class isPlacedRadio {};
             class serverSetStation {};
+            class serverSetVolume {};
             class setStation {};
+            class setVolume {};
             class showNowPlaying {};
         };
     };
@@ -75,6 +81,15 @@ class CfgVehicles {
                 typeName = "STRING";
                 defaultValue = "''";
                 expression = "if (isServer && {!is3DEN} && {_value != ''}) then {[_this, _value] call A3R_fnc_serverSetStation}";
+            };
+            class a3r_volume {
+                displayName = "Radio volume";
+                tooltip = "Volume at mission start. Players can change it in game.";
+                property = "a3r_volume";
+                control = "Slider";
+                typeName = "NUMBER";
+                defaultValue = "1";
+                expression = "if (isServer && {!is3DEN} && {_value != 1}) then {[_this, _value] call A3R_fnc_serverSetVolume}";
             };
         };
     };
