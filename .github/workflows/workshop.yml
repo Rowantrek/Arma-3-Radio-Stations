@@ -22,6 +22,11 @@ on:
       - 'Arma3RadioStations/**'
       - 'WORKSHOP.md'
   workflow_dispatch:
+    inputs:
+      metadata:
+        description: 'Send the description and change note (untick to test a minimal upload: item id + content only)'
+        type: boolean
+        default: true
 
 concurrency:
   group: workshop
@@ -47,6 +52,7 @@ jobs:
           STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
         run: |
           [ -n "$WORKSHOP_ITEM_ID" ] || { echo "::error::Set the WORKSHOP_ITEM_ID repository variable"; exit 1; }
+          [[ "$WORKSHOP_ITEM_ID" =~ ^[0-9]+$ ]] || { echo "::error::WORKSHOP_ITEM_ID must be only the item's number, got '$WORKSHOP_ITEM_ID'"; exit 1; }
           [ -n "$STEAM_USERNAME" ] || { echo "::error::Set the STEAM_USERNAME secret"; exit 1; }
           [ -n "$STEAM_PASSWORD$STEAM_CONFIG_VDF" ] || { echo "::error::Set the STEAM_PASSWORD (or STEAM_CONFIG_VDF) secret"; exit 1; }
 
@@ -68,23 +74,37 @@ jobs:
         run: hemtt release
 
       - name: Write Workshop item file
+        env:
+          METADATA: ${{ inputs.metadata }} # empty on push, which counts as true
         run: |
           # Description: the first code block in WORKSHOP.md. VDF strings need \ and " escaped.
           escape() { sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'; }
-          description=$(awk '/^```/{n++; next} n==1' WORKSHOP.md | escape)
-          [ -n "$description" ] || { echo "::error::No code block found in WORKSHOP.md"; exit 1; }
-          changenote=$(printf 'v%s\n\n%s\n\n%s/%s/commit/%s' "${{ steps.version.outputs.version }}" \
-            "$(git log -1 --format=%s)" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_SHA" | escape)
+          metadata=""
+          if [ "$METADATA" != "false" ]; then
+            description=$(awk '/^```/{n++; next} n==1' WORKSHOP.md | escape)
+            [ -n "$description" ] || { echo "::error::No code block found in WORKSHOP.md"; exit 1; }
+            changenote=$(printf 'v%s\n\n%s\n\n%s/%s/commit/%s' "${{ steps.version.outputs.version }}" \
+              "$(git log -1 --format=%s)" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_SHA" | escape)
+            echo "Description: ${#description} characters. Change note: ${#changenote} characters."
+            metadata=$(printf '    "changenote" "%s"\n    "description" "%s"' "$changenote" "$description")
+          else
+            echo "Minimal upload: no description or change note."
+          fi
           cat > "$RUNNER_TEMP/workshop.vdf" <<EOF
           "workshopitem"
           {
               "appid" "107410"
               "publishedfileid" "$WORKSHOP_ITEM_ID"
               "contentfolder" "$GITHUB_WORKSPACE/Arma3RadioStations/.hemttout/release"
-              "changenote" "$changenote"
-              "description" "$description"
+          $metadata
           }
           EOF
+          echo "::group::Workshop item file"
+          cat "$RUNNER_TEMP/workshop.vdf"
+          echo "::endgroup::"
+          echo "::group::Content folder"
+          find "$GITHUB_WORKSPACE/Arma3RadioStations/.hemttout/release" -type f -printf '%s\t%p\n'
+          echo "::endgroup::"
 
       - uses: andriivitiv/setup-steamcmd@v1
         id: steamcmd
@@ -113,7 +133,19 @@ jobs:
             +workshop_build_item "$RUNNER_TEMP/workshop.vdf" \
             +quit
 
+      - name: Show SteamCMD logs
+        if: failure()
+        run: |
+          # SteamCMD only prints a short error; its logs usually name the rejected field
+          for log in "$HOME"/Steam/logs/*.txt "${{ steps.steamcmd.outputs.directory }}"/logs/*.txt; do
+            [ -f "$log" ] || continue
+            echo "::group::$log"
+            tail -n 80 "$log"
+            echo "::endgroup::"
+          done
+
       - name: Tag and create GitHub release
+        if: ${{ inputs.metadata != false }} # a minimal test upload doesn't count as a release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
