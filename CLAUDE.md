@@ -2,6 +2,10 @@
 
 Rules and workflow for working on **Arma 3 Radio Stations** (by Rowantrek), a CBA_A3 Arma 3 mod that gives every vehicle, and a placeable object, a synced music radio.
 
+## Changing this file
+
+**Don't modify CLAUDE.md without the user's explicit permission.** If something here looks out of date, or a new rule seems useful, suggest the change and wait for a yes. README, ARCHITECTURE.md and WORKSHOP.md can be updated as part of a change; CLAUDE.md can't.
+
 ## Where things are documented
 
 | Where | What |
@@ -18,9 +22,7 @@ When you change behaviour, update the README for anything user-facing, WORKSHOP.
 
 ```
 Arma3RadioStations/            The mod (HEMTT project, prefix "a3r", mainprefix "z")
-  addons/main/                 a3r_main.pbo: logic, settings, keybinds, placeable radio, logo (data/)
-  addons/stations/             a3r_stations.pbo: built-in stations + .ogg audio (generated)
-  .hemtt/missions/a3r_test.VR  Test mission for `hemtt launch`
+  addons/main/                 a3r_main.pbo: logic, settings, keybinds, placeable radio, logo (data/)  .hemtt/missions/a3r_test.VR  Test mission for `hemtt launch`
 AddonTemplate/                 Example music add-on (HEMTT project) for others to copy
 tools/                         import_music.ps1, bump_version.ps1, make_demo_audio.sh
 ```
@@ -45,8 +47,6 @@ ARCHITECTURE.md explains the reasons.
 - **One volume knob per radio** affects occupants and everyone outside alike. Placed radios always sound like a PA.
 - Network state stays minimal and server-authoritative. Don't add per-frame network traffic, `remoteExec` audio or server-side loops.
 - Changing a default key needs a **new keybind id**, because CBA keeps saved bindings.
-- Don't rename the `a3r_stations` CfgPatches class.
-
 ## Conventions
 
 - **Naming:** functions `A3R_fnc_<name>`, in `functions/fn_<name>.sqf` and listed alphabetically in `CfgFunctions` in `addons/main/config.cpp`. Variables and CBA events `a3r_*`. Config classes `A3R_*`.
@@ -66,8 +66,7 @@ ARCHITECTURE.md explains the reasons.
 
 ## Generated files and music
 
-- `cfgSounds.hpp`, `cfgMusic.hpp`, `stations.hpp` and `data/*.ogg` in `addons/stations`, the test mission's `radio/` folder and `AddonTemplate/addons/main` are written by `import_music.ps1`. Change the music or the script, not these files.
-- **The built-in stations are real music the user added.** Don't replace or re-import them unless asked, and never import `demo_music/builtin` over them.
+- `cfgSounds.hpp`, `cfgMusic.hpp`, `stations.hpp` and `data/*.ogg` in the test mission's `radio/` folder and `AddonTemplate/addons/main` are written by `import_music.ps1`. Change the music or the script, not these files.
 - Don't add music unless the user confirms they have the rights to distribute it.
 
 ## Releasing

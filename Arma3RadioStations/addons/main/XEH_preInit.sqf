@@ -5,12 +5,6 @@ a3r_soundFileCache = createHashMap;
 
 // Station sources. Force these per server (server settings) or per mission (Eden > Addon Options).
 [
-    "a3r_builtInStations", "CHECKBOX",
-    ["Built-in stations", "Stations that come with Arma 3 Radio Stations."],
-    ["Arma 3 Radio Stations", "Stations"], true, 1
-] call CBA_fnc_addSetting;
-
-[
     "a3r_missionStations", "CHECKBOX",
     ["Mission stations", "Stations defined in the mission's description.ext, with music in the mission folder."],
     ["Arma 3 Radio Stations", "Stations"], true, 1
