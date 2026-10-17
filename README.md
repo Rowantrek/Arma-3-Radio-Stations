@@ -41,6 +41,7 @@ Arma can't stream audio or play files from a player's own disk. Every player nee
 | &nbsp;&nbsp;`Arma3RadioStations/addons/stations` | Built-in stations and their audio |
 | &nbsp;&nbsp;`Arma3RadioStations/.hemtt/missions/a3r_test.VR` | Test mission: mission-defined station, placed radio, vehicles |
 | [`AddonTemplate/`](AddonTemplate) | **Music add-on template** for making your own music mod. HEMTT project. |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | **How it works**: technical overview for contributors |
 | [`tools/`](tools) | **Tools**: `import_music.ps1` turns music into stations; `bump_version.ps1` sets the release version; `make_demo_audio.sh` synthesizes the placeholder music |
 
 ---
