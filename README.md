@@ -38,9 +38,7 @@ Arma can't stream audio or play files from a player's own disk. Every player nee
 | [`Arma3RadioStations/`](Arma3RadioStations) | **Arma 3 Radio Stations itself**: everything that is built into the mod. HEMTT project. |
 | &nbsp;&nbsp;`Arma3RadioStations/addons/main` | Radio logic, settings, keybinds, placeable radio || &nbsp;&nbsp;`Arma3RadioStations/.hemtt/missions/a3r_test.VR` | Test mission: mission-defined station, placed radio, vehicles |
 | [`AddonTemplate/`](AddonTemplate) | **Music add-on template** for making your own music mod. HEMTT project. |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | **How it works**: technical overview for contributors |
-| [`WORKSHOP.md`](WORKSHOP.md) | **Steam Workshop description** (BBCode) |
-| [`tools/`](tools) | **Tools**: `import_music.ps1` turns music into stations; `bump_version.ps1` sets the release version; `make_demo_audio.sh` synthesizes the placeholder music |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | **How it works**: technical overview for contributors || [`tools/`](tools) | **Tools**: `import_music.ps1` turns music into stations; `bump_version.ps1` sets the release version; `make_demo_audio.sh` synthesizes the placeholder music |
 
 ---
 
@@ -340,6 +338,8 @@ releases/a3r-<version>.zip
 ```
 
 You can rename the `@a3r` folder, for example to `@Arma3RadioStations`. Upload this folder to the Steam Workshop with *Arma 3 Publisher*, or share the ZIP.
+
+**Automatic releases:** when `master` is updated with changes to `Arma3RadioStations/`, the [Release workflow](.github/workflows/release.yml) builds and signs the mod and publishes the ZIP as a [GitHub release](https://github.com/Rowantrek/Arma-3-Radio-Stations/releases) tagged `v<version>`. Download it from there and upload the `@a3r` folder to the Workshop by hand. You can also start it from the *Actions* tab. It stops if that version has already been released, so bump the version first.
 
 - **Version:** releases are numbered by date, `YYYY.MM.DD.N`, where `N` counts the releases made that day, starting at 1. Before each release, run `powershell -ExecutionPolicy Bypass -File tools\bump_version.ps1`. It writes today's date to `Arma3RadioStations/addons/main/script_version.hpp` and increases `N` if you've already released today. The ZIP name drops the leading zeros (e.g. `a3r-2026.2.9.1.zip`), but the mod's config keeps them.
 - **Keys:** each release is signed with a new key, so server owners must replace the old `.bikey` when they update.
