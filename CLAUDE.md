@@ -10,8 +10,9 @@ Rules and workflow for working on **Arma 3 Radio Stations** (by Rowantrek), a CB
 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | How the mod works and why. Enough to understand the design, no more. |
 | **Code and code comments** | The details, and the source of truth. Read the functions involved before changing them, and keep comments short, explaining *why*. |
 | **[README.md](README.md)** | The user manual for players, mission makers, server owners and music add-on makers. |
+| **[WORKSHOP.md](WORKSHOP.md)** | The Steam Workshop description (BBCode), to copy into Arma 3 Publisher. |
 
-When you change behaviour, update the README for anything user-facing and ARCHITECTURE.md for design changes.
+When you change behaviour, update the README for anything user-facing, WORKSHOP.md if the features or controls change, and ARCHITECTURE.md for design changes.
 
 ## Repository layout
 
