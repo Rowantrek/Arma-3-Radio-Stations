@@ -29,24 +29,26 @@ a3r_soundFileCache = createHashMap;
 ] call CBA_fnc_addSetting;
 
 [
-    "a3r_radioRange", "SLIDER",
-    ["Placed radio range", "Distance in metres a placed radio can be heard."],
-    "Arma 3 Radio Stations", [5, 200, 40, 0], 1
+    "a3r_paRange", "SLIDER",
+    ["PA range", "Distance in metres a vehicle's PA, and every placed radio, can be heard at 50% radio volume. The volume knob scales it: 100% doubles it."],
+    "Arma 3 Radio Stations", [0, 300, 50, 0], 1
 ] call CBA_fnc_addSetting;
 
 [
     "a3r_vehicleRange", "SLIDER",
-    ["Vehicle radio range (outside)", "Distance in metres a vehicle radio can be heard from outside. 0 = only occupants hear it."],
+    ["Vehicle radio range (outside)", "Distance in metres a vehicle radio (PA off) can be heard from outside at 50% radio volume. The volume knob scales it: 100% doubles it. 0 = only occupants hear it."],
     "Arma 3 Radio Stations", [0, 100, 20, 0], 1
 ] call CBA_fnc_addSetting;
 
 if (isServer) then {
     ["a3r_setStation", {_this call A3R_fnc_serverSetStation}] call CBA_fnc_addEventHandler;
     ["a3r_setVolume", {_this call A3R_fnc_serverSetVolume}] call CBA_fnc_addEventHandler;
+    ["a3r_setPA", {_this call A3R_fnc_serverSetPA}] call CBA_fnc_addEventHandler;
 };
 
 if (hasInterface) then {
-    // Default keys: Ctrl+] next, Ctrl+[ previous, Ctrl+\ off, Ctrl+= louder, Ctrl+- quieter.
+    // Vehicle radios only; placed radios use the scroll menu.
+    // Default keys: Ctrl+] next, Ctrl+[ previous, Ctrl+; on/off, Ctrl+= louder, Ctrl+- quieter, Ctrl+' PA.
     // Rebind under Configure > Controls > Configure Addons.
     {
         _x params ["_id", "_name", "_action", "_dik"];
@@ -63,8 +65,9 @@ if (hasInterface) then {
     } forEach [
         ["a3r_next", "Next station", "[_target, 1] call A3R_fnc_cycleStation", 0x1B],
         ["a3r_prev", "Previous station", "[_target, -1] call A3R_fnc_cycleStation", 0x1A],
-        ["a3r_off", "Turn radio off", "[_target, 0] call A3R_fnc_cycleStation", 0x2B],
+        ["a3r_power", "Turn radio on/off", "[_target] call A3R_fnc_togglePower", 0x27],
         ["a3r_volUp", "Volume up", "[_target, 0.1] call A3R_fnc_adjustVolume", 0x0D],
-        ["a3r_volDown", "Volume down", "[_target, -0.1] call A3R_fnc_adjustVolume", 0x0C]
+        ["a3r_volDown", "Volume down", "[_target, -0.1] call A3R_fnc_adjustVolume", 0x0C],
+        ["a3r_pa", "Play through PA (vehicles)", "[_target] call A3R_fnc_togglePA", 0x28]
     ];
 };

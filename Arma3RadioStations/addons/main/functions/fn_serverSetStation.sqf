@@ -21,6 +21,10 @@ if (_station != "" && {!(_station in (call A3R_fnc_getStations))}) exitWith {
     diag_log format ["[A3R] Unknown radio station '%1' for %2", _station, _obj];
 };
 
+// Remember the station when turning off, so turning back on returns to it
+private _old = _obj getVariable ["a3r_station", ""];
+if (_station == "" && {_old != ""}) then {_obj setVariable ["a3r_lastStation", _old, true]};
+
 _obj setVariable ["a3r_station", _station, true];
 
 private _radios = (missionNamespace getVariable ["a3r_radios", []]) select {!isNull _x && {_x != _obj}};

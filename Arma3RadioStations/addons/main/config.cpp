@@ -30,22 +30,26 @@ class CfgFunctions {
     class A3R {
         class main {
             file = "\z\a3r\addons\main\functions";
-            class addPlayerActions {};
+            class addPlacedRadioActions {};
             class adjustVolume {};
             class clientUpdate {};
             class cycleStation {};
             class findConfig {};
+            class getPlacedRadio {};
             class getSoundFile {};
             class getStations {};
             class getTarget {};
             class getTrackAt {};
             class hasRadio {};
             class isPlacedRadio {};
+            class serverSetPA {};
             class serverSetStation {};
             class serverSetVolume {};
             class setStation {};
             class setVolume {};
             class showNowPlaying {};
+            class togglePA {};
+            class togglePower {};
         };
     };
 };
@@ -75,7 +79,7 @@ class CfgVehicles {
         class Attributes {
             class a3r_station {
                 displayName = "Radio station";
-                tooltip = "Station to play at mission start: a station class name (e.g. A3R_PulseFM), 'random', or empty for off.";
+                tooltip = "Station to play at mission start: a station class name (e.g. A3R_Antistasi), 'random', or empty for off.";
                 property = "a3r_station";
                 control = "Edit";
                 typeName = "STRING";
@@ -84,12 +88,12 @@ class CfgVehicles {
             };
             class a3r_volume {
                 displayName = "Radio volume";
-                tooltip = "Volume at mission start. Players can change it in game.";
+                tooltip = "Volume at mission start. 50% is normal loudness, 100% is double. Players can change it in game.";
                 property = "a3r_volume";
                 control = "Slider";
                 typeName = "NUMBER";
-                defaultValue = "1";
-                expression = "if (isServer && {!is3DEN} && {_value != 1}) then {[_this, _value] call A3R_fnc_serverSetVolume}";
+                defaultValue = "0.5";
+                expression = "if (isServer && {!is3DEN} && {_value != 0.5}) then {[_this, _value] call A3R_fnc_serverSetVolume}";
             };
         };
     };

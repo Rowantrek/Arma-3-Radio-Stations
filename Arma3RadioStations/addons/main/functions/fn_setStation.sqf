@@ -9,4 +9,4 @@ params ["_obj", "_station"];
 if (isNull _obj) exitWith {};
 
 ["a3r_setStation", [_obj, _station]] call CBA_fnc_serverEvent;
-[_station] call A3R_fnc_showNowPlaying;
+[_station, _obj getVariable ["a3r_volume", 0.5], _obj getVariable ["a3r_pa", false]] call A3R_fnc_showNowPlaying;

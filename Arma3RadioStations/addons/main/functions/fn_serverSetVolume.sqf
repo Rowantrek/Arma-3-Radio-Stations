@@ -3,7 +3,7 @@
  *
  * Arguments:
  * 0: Radio object or vehicle <OBJECT>
- * 1: Volume, 0 to 1 <NUMBER>
+ * 1: Volume, 0 to 1. 0.5 is the default, normal loudness; 1 is double <NUMBER>
  */
 params ["_obj", "_volume"];
 if (!isServer || {isNull _obj}) exitWith {};

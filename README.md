@@ -16,10 +16,11 @@ Every vehicle has a radio, modded vehicles included, and there is a placeable ra
 
 ## Features
 
-- **Vehicle radios.** Cars, trucks, tanks, boats, helicopters and planes, from vanilla or mods. Occupants hear clear audio on the music channel; people outside hear it in 3D from the vehicle.
-- **Placeable radio.** *Music Radio* in Eden and Zeus (*Things > Radios*), heard in 3D around it.
+- **Vehicle radios.** Cars, trucks, tanks, boats, helicopters and planes, from vanilla or mods. Occupants hear it clearly, not muffled by the cabin; people outside hear it in 3D from the vehicle.
+- **Placeable radio.** *Music Radio* in Eden and Zeus (*Things > Radios*), heard in 3D around it like a loudspeaker.
+- **PA.** Vehicles can play their radio through an outside speaker, much louder and further than the normal outside sound.
 - **Live stations.** Each station is a looping playlist that keeps playing whether anyone listens or not. Tuning in joins the current song mid-way.
-- **Lightweight in multiplayer.** Only the station choice goes over the network. Timing comes from the synced mission clock.
+- **Lightweight in multiplayer.** Only the station, volume and PA choices go over the network. Timing comes from the synced mission clock.
 - **Three sources of music**, which can be used together and switched on or off per server or per mission:
 
 | | Built-in | Mission | Add-on mod |
@@ -40,6 +41,7 @@ Arma can't stream audio or play files from a player's own disk. Every player nee
 | &nbsp;&nbsp;`Arma3RadioStations/addons/stations` | Built-in stations and their audio |
 | &nbsp;&nbsp;`Arma3RadioStations/.hemtt/missions/a3r_test.VR` | Test mission: mission-defined station, placed radio, vehicles |
 | [`AddonTemplate/`](AddonTemplate) | **Music add-on template** for making your own music mod. HEMTT project. |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | **How it works**: technical overview for contributors |
 | [`tools/`](tools) | **Tools**: `import_music.ps1` turns music into stations; `bump_version.ps1` sets the release version; `make_demo_audio.sh` synthesizes the placeholder music |
 
 ---
@@ -48,12 +50,13 @@ Arma can't stream audio or play files from a player's own disk. Every player nee
 
 | | |
 |---|---|
-| **Scroll menu** | *Radio: next station* / *turn off* / *volume up* / *volume down*: when inside a vehicle, or looking at a placed radio within 3 m |
-| **Keybinds** | `Ctrl+]` next station, `Ctrl+[` previous, `Ctrl+\` off, `Ctrl+=` volume up, `Ctrl+-` volume down. Rebind in *Options > Controls > Configure Addons > Arma 3 Radio Stations* |
-| **Radio volume** | Each radio has its own volume knob (0–100 %, in 10 % steps), shared with everyone who hears it. Turning a vehicle radio down also shortens how far it is heard outside the vehicle |
-| **Your game volume** | Inside a vehicle: **music** volume. Placed radios and vehicles heard from outside: **effects** volume |
+| **Keybinds** | `Ctrl+]` next station, `Ctrl+[` previous, `Ctrl+;` on/off, `Ctrl+=` volume up, `Ctrl+-` volume down, `Ctrl+'` play through PA (vehicles). They work for the radio of the vehicle you're in. Rebind in *Options > Controls > Configure Addons > Arma 3 Radio Stations* |
+| **Placed radios** | Always sound like a vehicle PA. Scroll menu while looking at one within 3 m: *Radio: turn on*, or when on, *next station* / *previous station* / *volume up* / *volume down* / *turn off* |
+| **Radio volume** | Each radio has its own volume knob (0 %, 5 %, then 10 % steps to 100 %), shared with everyone who hears it. It starts at 50 %. Inside a vehicle it sets the loudness (100 % is twice as loud). For everything heard from outside (vehicles, PA and placed radios) it sets how far the radio is heard, twice the range setting at 100 %, and with that how loud it is at any given distance |
+| **PA** | Plays a vehicle's radio through its outside speaker: 2.6× as loud outside, heard up to the *PA range* setting (50 m at 50 % volume). Occupants hear no difference. Shown as *PA* in the radio popup |
+| **Your game volume** | All radios follow your **effects** volume, inside and outside vehicles |
 
-Switching station shows the station name and the current song.
+Turning a radio back on, with on/off or next/previous, returns it to the station it was last on. Switching station or changing the volume shows the station, the current song and the volume for 3 seconds.
 
 ---
 
@@ -61,7 +64,7 @@ Switching station shows the station name and the current song.
 
 ### Placed radios
 
-Place **Music Radio** from *Things > Radios*. In its attributes, set **Radio station** to a station class name (e.g. `A3R_PulseFM`), `random`, or leave it empty for off, and **Radio volume** for its starting volume.
+Place **Music Radio** from *Things > Radios*. In its attributes, set **Radio station** to a station class name (e.g. `A3R_Antistasi`), `random`, or leave it empty for off, and **Radio volume** for its starting volume (default 50 %; 100 % is heard twice as far, and louder).
 
 To turn any object into a radio:
 
@@ -80,10 +83,10 @@ this setVariable ["a3r_hasRadio", false, true]; // in the vehicle's init: no rad
 ### Scripting
 
 ```sqf
-[_vehicle, "A3R_PulseFM"] call A3R_fnc_setStation;   // tune: station class, "random", or "" for off
-[_vehicle, 0.5] call A3R_fnc_setVolume;               // volume 0-1
-call A3R_fnc_getStations;                             // active station class names
-["A3R_PulseFM"] call A3R_fnc_getTrackAt;              // [track class, seconds into track, play id]
+[_vehicle, "A3R_Antistasi"] call A3R_fnc_setStation; // tune: station class, "random", or "" for off
+[_vehicle, 0.5] call A3R_fnc_setVolume;             // volume 0-1: 0.5 normal (default), 1 double
+call A3R_fnc_getStations;                           // active station class names
+["A3R_Antistasi"] call A3R_fnc_getTrackAt;            // [track class, seconds into track, play id]
 ```
 
 ### Adding your own stations to a mission
@@ -137,8 +140,8 @@ Log in as admin, open *Options > Addon Options > Arma 3 Radio Stations* and use 
 | Setting | Default | |
 |---|---|---|
 | Vehicle radios | On | Whether vehicles have radios at all |
-| Placed radio range | 40 m | How far a placed radio can be heard |
-| Vehicle radio range (outside) | 20 m | How far a vehicle radio is heard from outside. 0 = occupants only |
+| PA range | 50 m | How far a vehicle's PA, and every placed radio, is heard at 50 % radio volume. The volume knob scales it (100 % doubles it) |
+| Vehicle radio range (outside) | 20 m | How far a vehicle radio (PA off) is heard from outside at 50 % radio volume, scaled the same way. 0 = occupants only |
 | Built-in stations | On | Stations that come with Arma 3 Radio Stations |
 | Mission stations | On | Stations defined in the mission file |
 | Add-on mod stations | On | Stations from music add-on mods |
@@ -158,7 +161,7 @@ Have a music add-on made for your server (see [for mod makers](#for-mod-makers-m
 
 ### Performance
 
-Radios use very little bandwidth: a variable on each radio changes only when someone switches station or changes its volume. The server does no audio work. Each client runs a small check twice a second.
+Radios use very little bandwidth: a variable on each radio changes only when someone switches station, changes its volume or toggles PA. The server does no audio work. Each client runs a small check twice a second.
 
 ---
 
@@ -248,6 +251,7 @@ powershell -ExecutionPolicy Bypass -File tools\import_music.ps1 -Source <music f
 | Mission folder (has `mission.sqm`) | `<mission>\radio` | `<mission>\radio` | `Mission` |
 
 - Converts `.mp3 .wav .flac .ogg .m4a .aac .wma .opus` to mono Ogg Vorbis, the format Arma needs for 3D sound.
+- Writes each track twice in `CfgSounds`: normal, and a louder `_PA` copy, used for vehicle PAs and placed radios. Music imported with an older version of the tool still works, but its PA is only further, not louder, and vehicles heard from outside are 25 % quieter. Re-run the tool to update it.
 - Writes the exact track lengths, which the station schedule depends on.
 - Skips files that are already converted and unchanged, and warns about `.ogg` files no station uses.
 
@@ -256,10 +260,11 @@ powershell -ExecutionPolicy Bypass -File tools\import_music.ps1 -Source <music f
 This is what the tool writes. You can also write it by hand:
 
 ```cpp
-class CfgSounds {   // 3D playback (placed radios, vehicles heard from outside)
-    class My_Track_01 { name = "Song"; sound[] = {"\path\song.ogg", 1, 1}; titles[] = {}; };
+class CfgSounds {   // everything heard from outside; the 2nd number is the loudness
+    class My_Track_01    { name = "Song"; sound[] = {"\path\song.ogg", 1.25, 1}; titles[] = {}; };
+    class My_Track_01_PA { name = "Song"; sound[] = {"\path\song.ogg", 3.25, 1}; titles[] = {}; }; // PA, optional
 };
-class CfgMusic {    // in-vehicle playback; duration in seconds drives the schedule
+class CfgMusic {    // track length: duration in seconds drives the schedule
     class My_Track_01 { name = "Song"; sound[] = {"\path\song.ogg", 1, 1}; duration = 183.4; };
 };
 class A3R_Stations {
@@ -370,23 +375,25 @@ See [For mod makers](#for-mod-makers-music-add-ons). It's the same process in `A
 
 ### Regenerating the placeholder music
 
-From the repository root:
+The test mission and the add-on template use synthesized placeholder tones. To regenerate them, from the repository root:
 
 ```sh
 sh tools/make_demo_audio.sh demo_music
-powershell -ExecutionPolicy Bypass -File tools\import_music.ps1 -Source demo_music\builtin -Target Arma3RadioStations\addons\stations -ClassPrefix A3R
 powershell -ExecutionPolicy Bypass -File tools\import_music.ps1 -Source demo_music\mission -Target Arma3RadioStations\.hemtt\missions\a3r_test.VR
+powershell -ExecutionPolicy Bypass -File tools\import_music.ps1 -Source demo_music\addon -Target AddonTemplate\addons\main
 ```
+
+The script also writes `demo_music\builtin`, the original placeholder built-in stations. Don't import that unless you want to replace the real built-in music.
 
 ### How sync works
 
-Every client runs a loop every 0.5 s. For each radio that is on, it works out the current track and offset from `CBA_missionTime`, so all machines agree without any audio traffic. It then plays the track locally: `playMusic` inside your own vehicle (volume with `fadeMusic`), `playSound3D` for placed radios (with volume; restarted if the radio is moved) and `say3D` for vehicles heard from outside (follows the vehicle; it has no volume, so the radio volume scales its range). The server keeps only public `a3r_station` and `a3r_volume` variables on each radio and a list of radios that are on.
+Every client runs a loop every 0.5 s. For each radio that is on, it works out the current track and offset from `CBA_missionTime`, so all machines agree without any audio traffic. It then plays the track locally: `playSoundUI` on the effects channel inside your own vehicle (not positional, so not muffled), and `say3D` for everything heard from outside: vehicles, PAs and placed radios (follows its object; it has no volume, so the radio volume scales its range, and the loudness comes from the track's `CfgSounds` volume, or its `_PA` copy for PAs and placed radios). The server keeps only public `a3r_station`, `a3r_volume` and `a3r_pa` variables on each radio and a list of radios that are on.
 
 ## Credits
 
 Made by **Rowantrek**. Built with [HEMTT](https://hemtt.dev) and [CBA_A3](https://github.com/CBATeam/CBA_A3).
 
-The built-in and example stations are synthesized placeholder tones.
+The example stations in the test mission and the add-on template are synthesized placeholder tones.
 
 ## License
 
@@ -398,4 +405,4 @@ You may share and adapt it as long as you:
 - **don't use it commercially**
 - **use it only in Arma**
 
-Music in mission files and music add-ons belongs to its own rights holders, not to this license.
+Music, including the built-in stations, music in mission files and music add-ons, belongs to its own rights holders and is not covered by this license.

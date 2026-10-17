@@ -35,6 +35,12 @@ $ErrorActionPreference = 'Stop'
 $inv = [Globalization.CultureInfo]::InvariantCulture
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 
+# CfgSounds volumes. Only vehicles heard from outside (say3D) use them: say3D has no volume
+# parameter, so this is the only place to set that level. In-vehicle and placed radios play the
+# .ogg file directly and ignore them. <track>_PA is the louder copy used when a vehicle plays through its PA.
+$outsideVolume = 1.25
+$paVolume = 3.25 # 2.6x the outside volume
+
 foreach ($tool in 'ffmpeg', 'ffprobe') {
     if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
         throw "$tool not found. Install ffmpeg (winget install Gyan.FFmpeg) and open a new terminal."
@@ -118,7 +124,8 @@ foreach ($dir in $stationDirs) {
 
         $title = $file.BaseName -replace '^\d+[\s._-]+', '' -replace '"', "'"
         $path = "$soundPath\$oggName"
-        $sounds.Add([string]::Format($inv, 'class {0} {{ name = "{1}"; sound[] = {{"{2}", 1, 1}}; titles[] = {{}}; }};', $trackClass, $title, $path))
+        $sounds.Add([string]::Format($inv, 'class {0} {{ name = "{1}"; sound[] = {{"{2}", {3}, 1}}; titles[] = {{}}; }};', $trackClass, $title, $path, $outsideVolume))
+        $sounds.Add([string]::Format($inv, 'class {0}_PA {{ name = "{1}"; sound[] = {{"{2}", {3}, 1}}; titles[] = {{}}; }};', $trackClass, $title, $path, $paVolume))
         $music.Add([string]::Format($inv, 'class {0} {{ name = "{1}"; sound[] = {{"{2}", 1, 1}}; duration = {3}; }};', $trackClass, $title, $path, $duration))
         $trackClasses += $trackClass
     }
