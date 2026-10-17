@@ -5,7 +5,7 @@ How Arma 3 Radio Stations works, and why the less obvious choices were made. Thi
 ## Overview
 
 - **`a3r_main`** (`Arma3RadioStations/addons/main`) holds all the logic: CBA settings, keybinds, the client sound loop, and the placeable `A3R_Radio_FM` (inherits `Land_FMradio_F`).
-- **`a3r_stations`** (`addons/stations`) holds the built-in stations. Missions (`description.ext`) and music add-on mods add more stations the same way, through config.
+- **No music ships with the mod.** Stations come only from missions (`description.ext`) and music add-on mods, both through config.
 - **Live stations:** every machine works out the current track and offset from `CBA_missionTime`. Only per-radio state (station, volume, PA) goes over the network. There's no audio traffic, and the server does no audio work.
 
 ## Stations and tracks
@@ -20,8 +20,7 @@ Tracks missing from either, or with `duration <= 0`, are dropped. A station with
 | Source | Where | Identified by |
 |---|---|---|
 | Mission | `description.ext` → `A3R_Stations` | `missionConfigFile` (`A3R_fnc_findConfig` looks here first) |
-| Built-in | `addons/stations` | `"a3r_stations" in configSourceAddonList`, so don't rename that CfgPatches class |
-| Add-on | any other mod | everything else in `configFile` |
+| Add-on | any mod | `configFile` |
 
 Sound paths: addons use `\z\<prefix>\addons\<addon>\data\file.ogg`, missions use `radio\file.ogg`. `A3R_fnc_getSoundFile` turns these into the form `playSoundUI` needs.
 
@@ -80,7 +79,7 @@ Time is `CBA_missionTime` plus a seed derived from the station name, so stations
 
 ## Settings and caches
 
-- **Settings** (CBA, global): `a3r_builtInStations`, `a3r_missionStations`, `a3r_addonStations`, `a3r_vehicleRadios`, `a3r_vehicleRange` (default 20 m), `a3r_paRange` (default 50 m).
+- **Settings** (CBA, global): `a3r_missionStations`, `a3r_addonStations`, `a3r_vehicleRadios`, `a3r_vehicleRange` (default 20 m), `a3r_paRange` (default 50 m).
 - **Caches** (preInit, never invalidated, because config is static during a mission): `a3r_schedules`, `a3r_stationsCache`, `a3r_radioClassCache`, `a3r_soundFileCache`. Don't cache anything that depends on runtime state.
 
 ## Import tool (`tools/import_music.ps1`)

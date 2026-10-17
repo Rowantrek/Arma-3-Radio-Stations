@@ -1,7 +1,7 @@
 #!/bin/sh
 # Synthesizes the placeholder demo music as WAV, one subfolder per station, ready for import_music.ps1.
 # Needs ffmpeg. Usage: sh tools/make_demo_audio.sh <output folder>, then import each subfolder:
-#   builtin -> Arma3RadioStations/addons/stations, mission -> Arma3RadioStations/.hemtt/missions/a3r_test.VR, addon -> AddonTemplate/addons/main
+#   mission -> Arma3RadioStations/.hemtt/missions/a3r_test.VR, addon -> AddonTemplate/addons/main
 set -e
 OUT=${1:?usage: make_demo_audio.sh <output folder>}
 
@@ -28,15 +28,10 @@ pad() { # file seconds basefreq secondsPerChord chordA chordB chordC chordD (sem
   ffmpeg -y -loglevel error -f lavfi -i "aevalsrc='$E*($CHORD)':s=44100:d=$2" -ac 1 "$1"
 }
 
-# Built-in stations (addons/stations)
-arp "$OUT/builtin/Pulse FM/01 Arp One.wav" 40 220 4 3
-arp "$OUT/builtin/Pulse FM/02 Arp Two.wav" 40 262 6 2
-pad "$OUT/builtin/Night Drive/01 Low Beams.wav" 48 82 6 0 3 -2 5
-pad "$OUT/builtin/Night Drive/02 Overpass.wav" 48 92 8 0 -4 -2 3
 # Example mission (Arma3RadioStations/.hemtt/missions/a3r_test.VR)
 pad "$OUT/mission/Drift Radio/01 Slow Tide.wav" 64 110 8 0 5 -3 -5
 pad "$OUT/mission/Drift Radio/02 Low Cloud.wav" 60 98 10 0 -2 3 5
-# Add-on template (E:\A3Radio_Addon)
+# Add-on template (AddonTemplate/addons/main)
 arp "$OUT/addon/Example FM/01 Example One.wav" 36 196 5 3
 arp "$OUT/addon/Example FM/02 Example Two.wav" 36 247 4 2
 echo "Wrote demo music to $OUT"

@@ -54,8 +54,8 @@ class CfgFunctions {
     };
 };
 
-// Stations come from the built-in addon (addons/stations), a mission's description.ext
-// (.hemtt/missions/a3r_test.VR) or music add-on mods (AddonTemplate/ in the repository). Each class:
+// The mod ships with no stations. They come from a mission's description.ext (.hemtt/missions/a3r_test.VR)
+// or music add-on mods (AddonTemplate/ in the repository). Each class:
 //   displayName = "Station name";
 //   tracks[] = {"TrackClass", ...};   // each track in both CfgSounds and CfgMusic, with duration in CfgMusic
 class A3R_Stations {};
@@ -79,7 +79,7 @@ class CfgVehicles {
         class Attributes {
             class a3r_station {
                 displayName = "Radio station";
-                tooltip = "Station to play at mission start: a station class name (e.g. A3R_Antistasi), 'random', or empty for off.";
+                tooltip = "Station to play at mission start: a station class name (e.g. Mission_DriftRadio), 'random', or empty for off.";
                 property = "a3r_station";
                 control = "Edit";
                 typeName = "STRING";
