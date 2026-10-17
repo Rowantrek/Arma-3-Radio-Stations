@@ -1,19 +1,15 @@
 /*
- * Returns the radio a unit can operate: its vehicle's radio, or a placed radio it looks at within 3 m.
+ * Returns the vehicle radio a unit's keybinds operate: its vehicle, if that has a radio.
+ * Placed radios use the scroll menu instead (A3R_fnc_getPlacedRadio).
  *
  * Arguments:
  * 0: Unit <OBJECT>
  *
- * Return: Radio object or vehicle, objNull if none <OBJECT>
+ * Return: Vehicle, objNull if none <OBJECT>
  */
 params ["_unit"];
 
-private _vehicle = vehicle _unit;
-if (_vehicle != _unit) exitWith {
-    [objNull, _vehicle] select ([_vehicle] call A3R_fnc_hasRadio)
-};
+private _vehicle = objectParent _unit;
+if (isNull _vehicle) exitWith {objNull};
 
-private _obj = cursorObject;
-if (!isNull _obj && {[_obj] call A3R_fnc_isPlacedRadio} && {_unit distance _obj < 3}) exitWith {_obj};
-
-objNull
+[objNull, _vehicle] select ([_vehicle] call A3R_fnc_hasRadio)

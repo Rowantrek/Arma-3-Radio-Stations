@@ -6,16 +6,16 @@
  * inside and outside a vehicle.
  * - The radio of the vehicle you sit in plays with playSoundUI: not positional, so it's clear
  *   rather than muffled by the cabin.
- * - Placed radios play with playSound3D, which has a volume but stays where it started,
- *   so the sound restarts if the radio is moved.
- * - Vehicles heard from outside play with say3D, which follows the vehicle but has no volume,
- *   so a lower volume shortens how far they are heard instead.
+ * - Everything heard from outside plays with say3D, which follows its object but has no volume,
+ *   so the volume knob sets how far it is heard instead. Loudness comes from the CfgSounds volume:
+ *   1.25 for vehicles, or 3.25 (the track's _PA variant) for a vehicle's PA and for placed radios,
+ *   which always sound like a PA.
  */
 private _unit = call CBA_fnc_currentUnit;
 private _vehicle = vehicle _unit;
 private _ear = AGLToASL positionCameraToWorld [0, 0, 0];
 
-// Sources are playSoundUI/playSound3D ids (numbers) or say3D sound objects
+// Sources are playSoundUI ids (numbers) or say3D sound objects
 private _stop = {
     if (_this isEqualType 0) then {stopSound _this} else {deleteVehicle _this};
 };
@@ -39,7 +39,9 @@ private _nowPlaying = [];
     private _volume = 2 * (_obj getVariable ["a3r_volume", 0.5]);
     private _isPlaced = [_obj] call A3R_fnc_isPlacedRadio;
     private _isInside = !_isPlaced && {_obj == _vehicle};
-    private _range = [a3r_vehicleRange * _volume, a3r_radioRange] select _isPlaced;
+    // PA: a vehicle's outside speaker, louder (the track's _PA sound variant) with its own range. Placed radios always use it
+    private _isPA = _isPlaced || {_obj getVariable ["a3r_pa", false]};
+    private _range = ([a3r_vehicleRange, a3r_paRange] select _isPA) * _volume;
 
     private _want = [];
     if (_station != "" && {alive _obj} && {_volume > 0} && {_isInside || {(getPosASL _obj) distance _ear < _range}}) then {
@@ -47,16 +49,16 @@ private _nowPlaying = [];
     };
 
     private _index = _playing findIf {(_x select 0) == _obj};
-    private _current = if (_index >= 0) then {_playing select _index} else {[_obj, "", objNull, []]};
-    _current params ["", "_key", "_source", "_pos"];
+    private _current = if (_index >= 0) then {_playing select _index} else {[_obj, "", objNull]};
+    _current params ["", "_key", "_source"];
 
     if (_want isEqualTo []) then {
         _source call _stop;
     } else {
         _want params ["_track", "_offset", "_playKey"];
-        // Restart on a new track, getting in or out, a volume change, or when a placed radio has moved
-        private _wantKey = format ["%1|%2|%3", _playKey, _isInside, [_range, _volume] select (_isPlaced || _isInside)];
-        if (_wantKey == _key && {!_isPlaced || {(getPosASL _obj) distance _pos < 1}}) then {
+        // Restart on a new track, getting in or out, a volume change or PA on/off (occupants don't hear the PA)
+        private _wantKey = format ["%1|%2|%3", _playKey, _isInside, [[_range, _isPA], _volume] select _isInside];
+        if (_wantKey == _key) then {
             _nowPlaying pushBack _current;
         } else {
             _source call _stop;
@@ -64,12 +66,12 @@ private _nowPlaying = [];
                 if (_isInside) exitWith {
                     playSoundUI [[_track] call A3R_fnc_getSoundFile, _volume, 1, true, _offset]
                 };
-                if (_isPlaced) exitWith {
-                    playSound3D [[_track] call A3R_fnc_getSoundFile, _obj, false, getPosASL _obj, _volume, 1, _range, _offset, true]
-                };
-                _obj say3D [_track, _range, 1, false, _offset]
+                // Music add-ons imported before PA existed have no _PA variant: fall back to the normal sound
+                private _sound = _track + "_PA";
+                if !(_isPA && {isClass (["CfgSounds", _sound] call A3R_fnc_findConfig)}) then {_sound = _track};
+                _obj say3D [_sound, _range, 1, false, _offset]
             };
-            _nowPlaying pushBack [_obj, _wantKey, _newSource, getPosASL _obj];
+            _nowPlaying pushBack [_obj, _wantKey, _newSource];
         };
     };
 } forEach _objects;

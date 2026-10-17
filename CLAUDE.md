@@ -11,9 +11,10 @@ Arma3RadioStations/            The mod itself (HEMTT project, prefix "a3r", main
   addons/main/                 a3r_main.pbo: all logic, settings, keybinds, placeable radio
     config.cpp                 CfgPatches, XEH hooks, CfgFunctions, A3R_Radio_FM object, empty A3R_Stations root
     XEH_preInit.sqf            caches, CBA settings, server event handler, keybinds
-    XEH_postInit.sqf           client-only: starts the 0.5 s loop
+    XEH_postInit.sqf           client-only: starts the 0.5 s loop, adds placed-radio scroll actions
     functions/fn_*.sqf         A3R_fnc_* functions (see below)
     script_version.hpp         Version YYYY.MM.DD.N (see Releasing)
+    data/Arma3RadioStations.paa  Mod logo (512×512), used by mod.cpp picture/logo/logoOver/logoSmall
   addons/stations/             a3r_stations.pbo: built-in stations + .ogg audio (generated)
   .hemtt/missions/a3r_test.VR  Test mission opened by `hemtt launch`: mission station, placed radio, vehicles
 AddonTemplate/                 Separate HEMTT project (prefix "a3r_mymusic"): example music add-on for others to copy
@@ -42,7 +43,7 @@ hemtt release                            # (user) signed build in releases/
 ### Data model (all config)
 
 A station is a class under `A3R_Stations` with `displayName` and `tracks[]`. Each track class name must exist in **both**:
-- `CfgSounds` (used by `say3D` for 3D playback) and
+- `CfgSounds` (used by `say3D` for everything heard from outside; its volume, the 2nd `sound[]` element, is the **only** way to set that loudness) and
 - `CfgMusic`, whose `duration` drives the schedule and whose `name` is the title shown. Its `sound[]` isn't played any more, but keep it so add-ons stay valid music configs.
 
 Tracks missing from either, or with `duration <= 0`, are silently dropped; a station with no valid tracks is hidden. Durations must match the real audio length, or tracks get cut off or leave silence, which is why the import tool measures them with ffprobe.
@@ -61,8 +62,12 @@ Sound paths: addons use absolute `\z\<prefix>\addons\<addon>\data\file.ogg`; mis
 
 ### Networking (keep it minimal)
 
-- The only replicated state is, per radio, `a3r_station` (station class or `""`) and `a3r_volume` (knob 0–1, unset = 0.5). Playback gain is `2 * a3r_volume`, so the 0.5 default is the sound file's normal loudness and 1 is double. `playSoundUI`/`playSound3D` cap volume at 5, so there's headroom, plus `a3r_radios` (public `missionNamespace` array of radios that are on). JIP works through these public variables.
-- Any machine calls `A3R_fnc_setStation` / `A3R_fnc_setVolume`, which send the CBA server events `a3r_setStation` / `a3r_setVolume` to `A3R_fnc_serverSetStation` / `A3R_fnc_serverSetVolume`. Only the server broadcasts those variables; it validates stations against `A3R_fnc_getStations` and clamps volume. (`setVolume` also sets `a3r_volume` locally, unbroadcast, so fast repeated presses step correctly before the server's update arrives.)
+- The only replicated state is:
+  - per radio, `a3r_station` (station class or `""`), `a3r_volume` (knob 0–1, unset = 0.5), `a3r_lastStation` (set when turned off) and, for vehicles, `a3r_pa` (bool, unset = false);
+  - `a3r_radios`, a public `missionNamespace` array of radios that are on.
+  JIP works through these public variables.
+- Playback gain is `2 * a3r_volume`, so the 0.5 default is the sound file's normal loudness and 1 is double. This real volume only applies inside a vehicle (`playSoundUI`, capped at 5). Outside, the gain scales range.
+- Any machine calls `A3R_fnc_setStation` / `A3R_fnc_setVolume` / `A3R_fnc_togglePA`, which send the CBA server events `a3r_setStation` / `a3r_setVolume` / `a3r_setPA` to `A3R_fnc_serverSetStation` / `A3R_fnc_serverSetVolume` / `A3R_fnc_serverSetPA`. Only the server broadcasts those variables; it validates stations against `A3R_fnc_getStations` and clamps volume. (`setVolume` and `togglePA` also set their variable locally, unbroadcast, so fast repeated presses work before the server's update arrives.)
 - `serverSetStation` defers with `CBA_fnc_waitUntilAndExecute` until `time > 0`, because Eden attribute expressions and init fields run before CBA settings are loaded.
 - The server does no audio work. Don't add per-frame network traffic, `remoteExec` audio, or server-side loops.
 
@@ -75,16 +80,18 @@ Sound paths: addons use absolute `\z\<prefix>\addons\<addon>\data\file.ogg`; mis
 - Checks the radios in `a3r_radios`, plus ones still playing locally (so turning a radio off stops it).
 - **Every radio plays on the effects channel**, so the player's effects slider sets the level everywhere. Don't move any of them to the music channel (`playMusic`): music and effects sliders differ, and the radio would jump in loudness when getting in or out of a vehicle.
 - The vehicle the player is in (not a placed radio) plays via `playSoundUI [file, volume, 1, true, offset]`. `isEffect = true` puts it on the effects channel; it isn't positional, so the cabin doesn't muffle it.
-- **Placed radios** play via `playSound3D [file, obj, false, posASL, volume, 1, range, offset, true]` (local). It supports volume but **doesn't follow its object**, so the sound restarts if the radio moves more than 1 m. File paths come from `A3R_fnc_getSoundFile` (mission files via `getMissionPath`, addon paths without the leading `\`).
-- **Vehicles heard from outside** play via `say3D [track, range, 1, false, offset]`. It follows the vehicle but has **no volume parameter**, so the gain scales the range instead (`a3r_vehicleRange * gain`: the setting's range at 50 %, double at 100 %).
-- Sources are tracked in `a3r_playing` as `[radio, restartKey, source, startPosASL]`. `source` is a `playSoundUI`/`playSound3D` id (number, stopped with `stopSound`) or a `say3D` sound object (`deleteVehicle`). `restartKey` is `"<playKey>|<isInside>|<volume or range>"`, so a new track, getting in or out, or a volume change restarts the sound at the current offset.
-- Range: `a3r_radioRange` for placed radios, `a3r_vehicleRange` for vehicles heard from outside (0 = occupants only). Volume 0 plays nothing.
+- **Placed radios** always play like a vehicle PA (below). They used to use `playSound3D` with a real volume. That was dropped so they match the PA exactly, and because `playSound3D` doesn't follow its object.
+- **Everything heard from outside** (vehicles, PAs, placed radios) plays via `say3D [sound, range, 1, false, offset]`. It follows its object but has **no volume parameter**, so the gain scales the range instead: `a3r_vehicleRange * gain`, or `a3r_paRange * gain` for PAs and placed radios. That gives the setting's range at 50 % and double at 100 %. Tested in game: a larger `say3D` range also makes the sound **louder** at a given distance, not just audible further away (the engine's falloff seems to scale with max distance). So the knob works as a real volume control outside too. This is intended: one knob per radio, for occupants and everyone outside alike. Their loudness comes from the CfgSounds volume the import tool writes: **1.25** (25 % above the file, so standing next to the vehicle isn't too quiet) and **3.25** for the `<track>_PA` copy (2.6× the outside volume).
+- **PA** (`a3r_pa` on vehicles; placed radios always count as PA): the outside sound uses `<track>_PA` and `a3r_paRange`. It falls back to `<track>` if the add-on has no `_PA` class (imported with an older tool). Occupants are unaffected. To change these levels, edit `$outsideVolume` / `$paVolume` in `import_music.ps1` and re-import; the PA range is the `a3r_paRange` setting.
+- Sources are tracked in `a3r_playing` as `[radio, restartKey, source]`. `source` is a `playSoundUI` id (number, stopped with `stopSound`) or a `say3D` sound object (`deleteVehicle`). `restartKey` is `"<playKey>|<isInside>|<[range, isPA] outside, volume inside>"`, so a new track, getting in or out, a volume change or toggling PA restarts the sound at the current offset. Toggling PA doesn't restart what occupants hear.
+- Range: `a3r_paRange` for PAs and placed radios, `a3r_vehicleRange` for vehicles with PA off (0 = occupants only), both × gain. Volume 0 plays nothing.
 
 ### Which objects are radios
 
 - `A3R_fnc_hasRadio` (vehicles): object var `a3r_hasRadio` overrides everything; then setting `a3r_vehicleRadios`; then config `a3r_hasRadio = 0/1`; then default `LandVehicle`/`Ship`/`Air`, minus `StaticWeapon`, `ParachuteBase` and UAVs. The result is cached per class in `a3r_radioClassCache`.
 - `A3R_fnc_isPlacedRadio`: object var `a3r_isRadio`, else config `a3r_isRadio = 1` (e.g. `A3R_Radio_FM`, which inherits `Land_FMradio_F`).
-- `A3R_fnc_getTarget`: the player's vehicle if it has a radio, else `cursorObject` if it's a placed radio within 3 m.
+- `A3R_fnc_getTarget` (keybinds): the player's vehicle if it has a radio, else objNull.
+- `A3R_fnc_getPlacedRadio` (scroll menu): the placed radio the unit, on foot, is looking at within 3 m, else objNull.
 
 ### Caches (created in preInit, never invalidated)
 
@@ -92,16 +99,17 @@ Sound paths: addons use absolute `\z\<prefix>\addons\<addon>\data\file.ogg`; mis
 
 ### Settings (CBA, `XEH_preInit.sqf`, all global `isGlobal = 1`)
 
-`a3r_builtInStations`, `a3r_missionStations`, `a3r_addonStations`, `a3r_vehicleRadios`, `a3r_radioRange` (5–200, default 40), `a3r_vehicleRange` (0–100, default 20). Category "Arma 3 Radio Stations" (station toggles in the "Stations" subcategory). These names are public API: server owners reference them in `cba_settings.sqf`, so don't rename them.
+`a3r_builtInStations`, `a3r_missionStations`, `a3r_addonStations`, `a3r_vehicleRadios`, `a3r_paRange` (0–300, default 50; replaced `a3r_radioRange` before release), `a3r_vehicleRange` (0–100, default 20). Category "Arma 3 Radio Stations" (station toggles in the "Stations" subcategory). These names are public API: server owners reference them in `cba_settings.sqf`, so don't rename them.
 
 ### Player input
 
-- **Keybinds only, no scroll-menu actions.** They were removed on purpose; don't add them back.
-- CBA keybinds `a3r_next` / `a3r_prev` / `a3r_off` / `a3r_volUp` / `a3r_volDown`, default Ctrl+] / Ctrl+[ / Ctrl+\ (on/off) / Ctrl+= / Ctrl+- (DIK 0x1B/0x1A/0x2B/0x0D/0x0C). They act on `A3R_fnc_getTarget`.
-- `A3R_fnc_togglePower` turns off, or on to `a3r_lastStation` (public object var the server sets when a radio is turned off), falling back to the first station. The keybind id stays `a3r_off` so players' existing bindings carry over.
+- **Vehicles: keybinds only. Placed radios: scroll menu only.** This split is deliberate; keep it.
+- Placed-radio actions (`fn_addPlacedRadioActions.sqf`) are added to the player unit via the CBA `"unit"` player event (guarded by `a3r_actionsAdded`). They act on `A3R_fnc_getPlacedRadio`, which returns the placed radio the unit, on foot, is looking at within 3 m. Off: turn on. On: next, previous, volume up/down (menu stays open), turn off.
+- CBA keybinds `a3r_next` / `a3r_prev` / `a3r_power` / `a3r_volUp` / `a3r_volDown` / `a3r_pa`, default Ctrl+] / Ctrl+[ / Ctrl+; (on/off) / Ctrl+= / Ctrl+- / Ctrl+' (DIK 0x1B/0x1A/0x27/0x0D/0x0C/0x28). On/off moved from Ctrl+\ because it conflicted, and its id changed from `a3r_off` to `a3r_power`: CBA saves each binding in the player's profile, and a saved binding wins over a changed default, so **changing a default key needs a new id** to reach existing players (this also resets anyone who rebound it). They act on `A3R_fnc_getTarget`, which returns the player's vehicle only (objNull on foot, so the key isn't consumed).
+- `A3R_fnc_togglePower` turns off, or on to `a3r_lastStation` (public object var the server sets when a radio is turned off), falling back to the first station. Keybind id `a3r_power`.
 - `A3R_fnc_cycleStation` with direction 1/-1/0 (0 = off). On a radio that's off, next/previous turn it on to `a3r_lastStation` like the toggle (first/last station if none).
-- `A3R_fnc_adjustVolume` with a step (±0.1, rounded to 10 %).
-- `A3R_fnc_setStation` and `A3R_fnc_setVolume` both call `A3R_fnc_showNowPlaying [station, volume]`, the single radio hint (station, track, volume). It clears itself after 3 s via `CBA_fnc_waitAndExecute`, unless a newer radio hint has replaced it (`a3r_hintId`).
+- `A3R_fnc_adjustVolume` moves one level up or down (sign of the step) through 0, 0.05, 0.1, 0.2 … 1, starting from the nearest level.
+- `A3R_fnc_setStation`, `A3R_fnc_setVolume` and `A3R_fnc_togglePA` all call `A3R_fnc_showNowPlaying [station, volume, pa]`, the single radio hint (station, track, volume, " · PA"). It clears itself after 3 s via `CBA_fnc_waitAndExecute`, unless a newer radio hint has replaced it (`a3r_hintId`).
 - `A3R_Radio_FM` has Eden attributes `a3r_station` and `a3r_volume` (Slider, 0–1, default 0.5).
 
 ## Conventions
@@ -110,7 +118,7 @@ Sound paths: addons use absolute `\z\<prefix>\addons\<addon>\data\file.ogg`; mis
 - **Adding a function:** create `functions/fn_<name>.sqf` **and** add `class <name> {};` to `CfgFunctions` in `addons/main/config.cpp` (alphabetical).
 - **Function header:** every function starts with a `/* ... */` block: one-line purpose, `Arguments:` list with `<TYPE>`, `Return:` if any. Then `params [...]`. Keep comments short and explain *why*.
 - **SQF style:** 4-space indents, `private` on every local, lazy `&& {..}` conditions, `exitWith` early returns, `getVariable [name, default]`, `findIf`/`select`/`apply` over manual loops.
-- **Public API**, documented in the README and used by mission makers: `A3R_fnc_setStation`, `A3R_fnc_setVolume`, `A3R_fnc_getStations`, `A3R_fnc_getTrackAt`, the object variables `a3r_hasRadio` / `a3r_isRadio` / `a3r_station` / `a3r_volume`, the config properties `a3r_hasRadio` / `a3r_isRadio`, the `A3R_Stations` schema, the `A3R_Radio_FM` class and the setting names. Keep them backwards compatible.
+- **Public API**, documented in the README and used by mission makers: `A3R_fnc_setStation`, `A3R_fnc_setVolume`, `A3R_fnc_getStations`, `A3R_fnc_getTrackAt`, the object variables `a3r_hasRadio` / `a3r_isRadio` / `a3r_station` / `a3r_volume` / `a3r_pa`, the `<track>_PA` CfgSounds convention, the config properties `a3r_hasRadio` / `a3r_isRadio`, the `A3R_Stations` schema, the `A3R_Radio_FM` class and the setting names. Keep them backwards compatible.
 - `requiredVersion = 2.18` in CfgPatches. Use only commands available in Arma 2.18.
 - Line endings per `.gitattributes`: `.ps1`/`.sqm` CRLF, `.sh` LF. `import_music.ps1` writes `.hpp` files as UTF-8 without BOM, CRLF.
 
@@ -122,9 +130,9 @@ These are rewritten by `import_music.ps1`. Change the music or the script instea
 - `Arma3RadioStations/.hemtt/missions/a3r_test.VR/radio/*`
 - `AddonTemplate/addons/main/{cfgSounds,cfgMusic,stations}.hpp` and `data/*.ogg`
 
-The import script: class prefix comes from `$PBOPREFIX$` (dropping `z`, `x`, `addons`, `main`), `Mission` for mission targets, or `-ClassPrefix` (built-in uses `A3R`). Station class = `<prefix>_<FolderNameAlnum>`, track class = `<station>_NN`. The `.ogg` name is based on the source file name, so reordering doesn't force reconversion. Conversion is mono 44.1 kHz Vorbis (mono is required for 3D `say3D`). It only reconverts when the source is newer, and it warns about unused `.ogg` files but never deletes them.
+The import script: class prefix comes from `$PBOPREFIX$` (dropping `z`, `x`, `addons`, `main`), `Mission` for mission targets, or `-ClassPrefix` (built-in uses `A3R`). Station class = `<prefix>_<FolderNameAlnum>`, track class = `<station>_NN`, plus `<station>_NN_PA` in CfgSounds only. The `.ogg` name is based on the source file name, so reordering doesn't force reconversion. Conversion is mono 44.1 kHz Vorbis (mono is required for 3D `say3D`). It only reconverts when the source is newer, and it warns about unused `.ogg` files but never deletes them.
 
-To regenerate the placeholder audio, see "Regenerating the placeholder music" in the README. The demo audio is synthesized, so the repo contains no copyrighted music. Keep it that way.
+The built-in stations (`addons/stations`) are real music the user added. Don't replace or re-import them without being asked. The test mission and AddonTemplate use synthesized placeholder tones; see "Regenerating the placeholder music" in the README, and don't import `demo_music/builtin` over the built-in stations. Don't add music to the repo unless the user confirms they have the rights to distribute it.
 
 ## Releasing
 

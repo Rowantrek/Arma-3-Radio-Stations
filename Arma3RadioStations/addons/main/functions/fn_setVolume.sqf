@@ -14,4 +14,4 @@ _volume = 0 max _volume min 1;
 _obj setVariable ["a3r_volume", _volume];
 ["a3r_setVolume", [_obj, _volume]] call CBA_fnc_serverEvent;
 
-[_obj getVariable ["a3r_station", ""], _volume] call A3R_fnc_showNowPlaying;
+[_obj getVariable ["a3r_station", ""], _volume, _obj getVariable ["a3r_pa", false]] call A3R_fnc_showNowPlaying;

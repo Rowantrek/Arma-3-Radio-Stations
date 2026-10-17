@@ -1,5 +1,5 @@
 /*
- * Returns a track's audio file in the form playSound3D needs: an absolute path for
+ * Returns a track's audio file in the form playSoundUI (and playSound3D) need: an absolute path for
  * mission files, and an addon path without the leading backslash for addon files.
  *
  * Arguments:

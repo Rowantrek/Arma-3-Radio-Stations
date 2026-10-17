@@ -30,21 +30,25 @@ class CfgFunctions {
     class A3R {
         class main {
             file = "\z\a3r\addons\main\functions";
+            class addPlacedRadioActions {};
             class adjustVolume {};
             class clientUpdate {};
             class cycleStation {};
             class findConfig {};
+            class getPlacedRadio {};
             class getSoundFile {};
             class getStations {};
             class getTarget {};
             class getTrackAt {};
             class hasRadio {};
             class isPlacedRadio {};
+            class serverSetPA {};
             class serverSetStation {};
             class serverSetVolume {};
             class setStation {};
             class setVolume {};
             class showNowPlaying {};
+            class togglePA {};
             class togglePower {};
         };
     };
@@ -75,7 +79,7 @@ class CfgVehicles {
         class Attributes {
             class a3r_station {
                 displayName = "Radio station";
-                tooltip = "Station to play at mission start: a station class name (e.g. A3R_PulseFM), 'random', or empty for off.";
+                tooltip = "Station to play at mission start: a station class name (e.g. A3R_Antistasi), 'random', or empty for off.";
                 property = "a3r_station";
                 control = "Edit";
                 typeName = "STRING";
