@@ -46,7 +46,7 @@ if (isServer) then {
 };
 
 if (hasInterface) then {
-    // Default keys: Ctrl+] next, Ctrl+[ previous, Ctrl+\ off, Ctrl+= louder, Ctrl+- quieter.
+    // Default keys: Ctrl+] next, Ctrl+[ previous, Ctrl+\ on/off, Ctrl+= louder, Ctrl+- quieter.
     // Rebind under Configure > Controls > Configure Addons.
     {
         _x params ["_id", "_name", "_action", "_dik"];
@@ -63,7 +63,7 @@ if (hasInterface) then {
     } forEach [
         ["a3r_next", "Next station", "[_target, 1] call A3R_fnc_cycleStation", 0x1B],
         ["a3r_prev", "Previous station", "[_target, -1] call A3R_fnc_cycleStation", 0x1A],
-        ["a3r_off", "Turn radio off", "[_target, 0] call A3R_fnc_cycleStation", 0x2B],
+        ["a3r_off", "Turn radio on/off", "[_target] call A3R_fnc_togglePower", 0x2B], // id kept so existing bindings carry over
         ["a3r_volUp", "Volume up", "[_target, 0.1] call A3R_fnc_adjustVolume", 0x0D],
         ["a3r_volDown", "Volume down", "[_target, -0.1] call A3R_fnc_adjustVolume", 0x0C]
     ];

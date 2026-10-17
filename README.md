@@ -16,7 +16,7 @@ Every vehicle has a radio, modded vehicles included, and there is a placeable ra
 
 ## Features
 
-- **Vehicle radios.** Cars, trucks, tanks, boats, helicopters and planes, from vanilla or mods. Occupants hear clear audio on the music channel; people outside hear it in 3D from the vehicle.
+- **Vehicle radios.** Cars, trucks, tanks, boats, helicopters and planes, from vanilla or mods. Occupants hear it clearly, not muffled by the cabin; people outside hear it in 3D from the vehicle.
 - **Placeable radio.** *Music Radio* in Eden and Zeus (*Things > Radios*), heard in 3D around it.
 - **Live stations.** Each station is a looping playlist that keeps playing whether anyone listens or not. Tuning in joins the current song mid-way.
 - **Lightweight in multiplayer.** Only the station choice goes over the network. Timing comes from the synced mission clock.
@@ -48,12 +48,11 @@ Arma can't stream audio or play files from a player's own disk. Every player nee
 
 | | |
 |---|---|
-| **Scroll menu** | *Radio: next station* / *turn off* / *volume up* / *volume down*: when inside a vehicle, or looking at a placed radio within 3 m |
-| **Keybinds** | `Ctrl+]` next station, `Ctrl+[` previous, `Ctrl+\` off, `Ctrl+=` volume up, `Ctrl+-` volume down. Rebind in *Options > Controls > Configure Addons > Arma 3 Radio Stations* |
-| **Radio volume** | Each radio has its own volume knob (0–100 %, in 10 % steps), shared with everyone who hears it. Turning a vehicle radio down also shortens how far it is heard outside the vehicle |
-| **Your game volume** | Inside a vehicle: **music** volume. Placed radios and vehicles heard from outside: **effects** volume |
+| **Keybinds** | `Ctrl+]` next station, `Ctrl+[` previous, `Ctrl+\` on/off, `Ctrl+=` volume up, `Ctrl+-` volume down. They work when inside a vehicle, or looking at a placed radio within 3 m. Rebind in *Options > Controls > Configure Addons > Arma 3 Radio Stations* |
+| **Radio volume** | Each radio has its own volume knob (0–100 %, in 10 % steps), shared with everyone who hears it. It starts at 50 %; 100 % is twice as loud. A vehicle radio's volume also sets how far it is heard outside the vehicle (twice the range setting at 100 %) |
+| **Your game volume** | All radios follow your **effects** volume, inside and outside vehicles |
 
-Switching station shows the station name and the current song.
+Turning a radio back on, with on/off or next/previous, returns it to the station it was last on. Switching station or changing the volume shows the station, the current song and the volume for 3 seconds.
 
 ---
 
@@ -61,7 +60,7 @@ Switching station shows the station name and the current song.
 
 ### Placed radios
 
-Place **Music Radio** from *Things > Radios*. In its attributes, set **Radio station** to a station class name (e.g. `A3R_PulseFM`), `random`, or leave it empty for off, and **Radio volume** for its starting volume.
+Place **Music Radio** from *Things > Radios*. In its attributes, set **Radio station** to a station class name (e.g. `A3R_PulseFM`), `random`, or leave it empty for off, and **Radio volume** for its starting volume (50 % is normal, 100 % is double).
 
 To turn any object into a radio:
 
@@ -81,7 +80,7 @@ this setVariable ["a3r_hasRadio", false, true]; // in the vehicle's init: no rad
 
 ```sqf
 [_vehicle, "A3R_PulseFM"] call A3R_fnc_setStation;   // tune: station class, "random", or "" for off
-[_vehicle, 0.5] call A3R_fnc_setVolume;               // volume 0-1
+[_vehicle, 0.5] call A3R_fnc_setVolume;               // volume 0-1: 0.5 normal (default), 1 double
 call A3R_fnc_getStations;                             // active station class names
 ["A3R_PulseFM"] call A3R_fnc_getTrackAt;              // [track class, seconds into track, play id]
 ```
@@ -259,7 +258,7 @@ This is what the tool writes. You can also write it by hand:
 class CfgSounds {   // 3D playback (placed radios, vehicles heard from outside)
     class My_Track_01 { name = "Song"; sound[] = {"\path\song.ogg", 1, 1}; titles[] = {}; };
 };
-class CfgMusic {    // in-vehicle playback; duration in seconds drives the schedule
+class CfgMusic {    // track length: duration in seconds drives the schedule
     class My_Track_01 { name = "Song"; sound[] = {"\path\song.ogg", 1, 1}; duration = 183.4; };
 };
 class A3R_Stations {
@@ -380,7 +379,7 @@ powershell -ExecutionPolicy Bypass -File tools\import_music.ps1 -Source demo_mus
 
 ### How sync works
 
-Every client runs a loop every 0.5 s. For each radio that is on, it works out the current track and offset from `CBA_missionTime`, so all machines agree without any audio traffic. It then plays the track locally: `playMusic` inside your own vehicle (volume with `fadeMusic`), `playSound3D` for placed radios (with volume; restarted if the radio is moved) and `say3D` for vehicles heard from outside (follows the vehicle; it has no volume, so the radio volume scales its range). The server keeps only public `a3r_station` and `a3r_volume` variables on each radio and a list of radios that are on.
+Every client runs a loop every 0.5 s. For each radio that is on, it works out the current track and offset from `CBA_missionTime`, so all machines agree without any audio traffic. It then plays the track locally: `playSoundUI` on the effects channel inside your own vehicle (not positional, so not muffled), `playSound3D` for placed radios (with volume; restarted if the radio is moved) and `say3D` for vehicles heard from outside (follows the vehicle; it has no volume, so the radio volume scales its range). The server keeps only public `a3r_station` and `a3r_volume` variables on each radio and a list of radios that are on.
 
 ## Credits
 

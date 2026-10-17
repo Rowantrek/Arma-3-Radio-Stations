@@ -11,7 +11,7 @@ Arma3RadioStations/            The mod itself (HEMTT project, prefix "a3r", main
   addons/main/                 a3r_main.pbo: all logic, settings, keybinds, placeable radio
     config.cpp                 CfgPatches, XEH hooks, CfgFunctions, A3R_Radio_FM object, empty A3R_Stations root
     XEH_preInit.sqf            caches, CBA settings, server event handler, keybinds
-    XEH_postInit.sqf           client-only: starts the 0.5 s loop, adds scroll actions
+    XEH_postInit.sqf           client-only: starts the 0.5 s loop
     functions/fn_*.sqf         A3R_fnc_* functions (see below)
     script_version.hpp         Version YYYY.MM.DD.N (see Releasing)
   addons/stations/             a3r_stations.pbo: built-in stations + .ogg audio (generated)
@@ -43,7 +43,7 @@ hemtt release                            # (user) signed build in releases/
 
 A station is a class under `A3R_Stations` with `displayName` and `tracks[]`. Each track class name must exist in **both**:
 - `CfgSounds` (used by `say3D` for 3D playback) and
-- `CfgMusic` (used by `playMusic` in-vehicle, and its `duration` drives the schedule).
+- `CfgMusic`, whose `duration` drives the schedule and whose `name` is the title shown. Its `sound[]` isn't played any more, but keep it so add-ons stay valid music configs.
 
 Tracks missing from either, or with `duration <= 0`, are silently dropped; a station with no valid tracks is hidden. Durations must match the real audio length, or tracks get cut off or leave silence, which is why the import tool measures them with ffprobe.
 
@@ -61,7 +61,7 @@ Sound paths: addons use absolute `\z\<prefix>\addons\<addon>\data\file.ogg`; mis
 
 ### Networking (keep it minimal)
 
-- The only replicated state is, per radio, `a3r_station` (station class or `""`) and `a3r_volume` (0–1, unset = 1), plus `a3r_radios` (public `missionNamespace` array of radios that are on). JIP works through these public variables.
+- The only replicated state is, per radio, `a3r_station` (station class or `""`) and `a3r_volume` (knob 0–1, unset = 0.5). Playback gain is `2 * a3r_volume`, so the 0.5 default is the sound file's normal loudness and 1 is double. `playSoundUI`/`playSound3D` cap volume at 5, so there's headroom, plus `a3r_radios` (public `missionNamespace` array of radios that are on). JIP works through these public variables.
 - Any machine calls `A3R_fnc_setStation` / `A3R_fnc_setVolume`, which send the CBA server events `a3r_setStation` / `a3r_setVolume` to `A3R_fnc_serverSetStation` / `A3R_fnc_serverSetVolume`. Only the server broadcasts those variables; it validates stations against `A3R_fnc_getStations` and clamps volume. (`setVolume` also sets `a3r_volume` locally, unbroadcast, so fast repeated presses step correctly before the server's update arrives.)
 - `serverSetStation` defers with `CBA_fnc_waitUntilAndExecute` until `time > 0`, because Eden attribute expressions and init fields run before CBA settings are loaded.
 - The server does no audio work. Don't add per-frame network traffic, `remoteExec` audio, or server-side loops.
@@ -73,11 +73,12 @@ Sound paths: addons use absolute `\z\<prefix>\addons\<addon>\data\file.ogg`; mis
 ### Client loop (`fn_clientUpdate.sqf`, CBA PFH every 0.5 s, `hasInterface` only)
 
 - Checks the radios in `a3r_radios`, plus ones still playing locally (so turning a radio off stops it).
-- The vehicle the player is in (not a placed radio) plays on the **music channel** via `playMusic [track, offset]`, tracked in `a3r_musicKey`. Radio volume is applied with `fadeMusic` (`a3r_musicVolume`); the mission's own `musicVolume` is saved in `a3r_missionMusicVolume` when the radio starts and restored when it stops. This takes over the mission's music channel while the radio is on.
+- **Every radio plays on the effects channel**, so the player's effects slider sets the level everywhere. Don't move any of them to the music channel (`playMusic`): music and effects sliders differ, and the radio would jump in loudness when getting in or out of a vehicle.
+- The vehicle the player is in (not a placed radio) plays via `playSoundUI [file, volume, 1, true, offset]`. `isEffect = true` puts it on the effects channel; it isn't positional, so the cabin doesn't muffle it.
 - **Placed radios** play via `playSound3D [file, obj, false, posASL, volume, 1, range, offset, true]` (local). It supports volume but **doesn't follow its object**, so the sound restarts if the radio moves more than 1 m. File paths come from `A3R_fnc_getSoundFile` (mission files via `getMissionPath`, addon paths without the leading `\`).
-- **Vehicles heard from outside** play via `say3D [track, range, 1, false, offset]`. It follows the vehicle but has **no volume parameter**, so volume scales the range instead (`a3r_vehicleRange * volume`).
-- Sources are tracked in `a3r_playing` as `[radio, restartKey, source, startPosASL]`. `source` is a `playSound3D` id (number, stopped with `stopSound`) or a `say3D` sound object (`deleteVehicle`). `restartKey` is `"<playKey>|<volume or range>"`, so a volume change restarts the 3D sound at the current offset.
-- Range: `a3r_radioRange` for placed radios, `a3r_vehicleRange` for vehicles heard from outside (0 = occupants only). Volume 0 plays nothing in 3D.
+- **Vehicles heard from outside** play via `say3D [track, range, 1, false, offset]`. It follows the vehicle but has **no volume parameter**, so the gain scales the range instead (`a3r_vehicleRange * gain`: the setting's range at 50 %, double at 100 %).
+- Sources are tracked in `a3r_playing` as `[radio, restartKey, source, startPosASL]`. `source` is a `playSoundUI`/`playSound3D` id (number, stopped with `stopSound`) or a `say3D` sound object (`deleteVehicle`). `restartKey` is `"<playKey>|<isInside>|<volume or range>"`, so a new track, getting in or out, or a volume change restarts the sound at the current offset.
+- Range: `a3r_radioRange` for placed radios, `a3r_vehicleRange` for vehicles heard from outside (0 = occupants only). Volume 0 plays nothing.
 
 ### Which objects are radios
 
@@ -95,11 +96,13 @@ Sound paths: addons use absolute `\z\<prefix>\addons\<addon>\data\file.ogg`; mis
 
 ### Player input
 
-- Scroll actions (`fn_addPlayerActions.sqf`), added on every player unit change via the CBA `"unit"` player event; guarded by `a3r_actionsAdded`.
-- Scroll actions: next station, off, volume up/down (volume ones only while on, and stay open after use).
-- CBA keybinds `a3r_next` / `a3r_prev` / `a3r_off` / `a3r_volUp` / `a3r_volDown`, default Ctrl+] / Ctrl+[ / Ctrl+\ / Ctrl+= / Ctrl+- (DIK 0x1B/0x1A/0x2B/0x0D/0x0C).
-- `A3R_fnc_cycleStation` with direction 1/-1/0; `A3R_fnc_adjustVolume` with a step (±0.1, rounded to 10 %); `A3R_fnc_showNowPlaying` and `A3R_fnc_setVolume` show a hint.
-- `A3R_Radio_FM` has Eden attributes `a3r_station` and `a3r_volume` (Slider, 0–1).
+- **Keybinds only, no scroll-menu actions.** They were removed on purpose; don't add them back.
+- CBA keybinds `a3r_next` / `a3r_prev` / `a3r_off` / `a3r_volUp` / `a3r_volDown`, default Ctrl+] / Ctrl+[ / Ctrl+\ (on/off) / Ctrl+= / Ctrl+- (DIK 0x1B/0x1A/0x2B/0x0D/0x0C). They act on `A3R_fnc_getTarget`.
+- `A3R_fnc_togglePower` turns off, or on to `a3r_lastStation` (public object var the server sets when a radio is turned off), falling back to the first station. The keybind id stays `a3r_off` so players' existing bindings carry over.
+- `A3R_fnc_cycleStation` with direction 1/-1/0 (0 = off). On a radio that's off, next/previous turn it on to `a3r_lastStation` like the toggle (first/last station if none).
+- `A3R_fnc_adjustVolume` with a step (±0.1, rounded to 10 %).
+- `A3R_fnc_setStation` and `A3R_fnc_setVolume` both call `A3R_fnc_showNowPlaying [station, volume]`, the single radio hint (station, track, volume). It clears itself after 3 s via `CBA_fnc_waitAndExecute`, unless a newer radio hint has replaced it (`a3r_hintId`).
+- `A3R_Radio_FM` has Eden attributes `a3r_station` and `a3r_volume` (Slider, 0–1, default 0.5).
 
 ## Conventions
 
@@ -134,3 +137,75 @@ Versions use calendar versioning, **`YYYY.MM.DD.N`**: release date, then the rel
 1. Run `powershell -ExecutionPolicy Bypass -File tools\bump_version.ps1`. Don't edit the numbers by hand.
 2. `hemtt release`. Each release is signed with a new key, so server owners need the new `.bikey`.
 3. The user publishes to the Workshop with Arma 3 Publisher.
+
+## Commits and pull requests
+
+Commit or push only when the user asks. Work on a branch, not `main`: short, kebab-case and descriptive (`radio-volume`, `fix-jip-station-sync`). Commit and PR messages should be detailed. Someone reading `git log` a year from now should understand what changed for players and *why* it was done that way, without opening the diff.
+
+### Commits
+
+- **One logical change per commit** where you can. If several changes touch the same files (e.g. README and CLAUDE.md) and can't be separated cleanly, make one commit with a section per change.
+- **Subject line:** imperative mood, ≤ 72 characters, no trailing period. Say what the change does for the mod, not which files moved: "Play in-vehicle radio on the effects channel", not "Update fn_clientUpdate.sqf".
+- **Body**, wrapped at ~72 columns, after a blank line:
+  - **What and why.** The behaviour before, the behaviour now, and the reason. Include rejected alternatives when the choice wasn't obvious. Engine limits are the usual case: `say3D` has no volume, and `playSound3D` doesn't follow its object.
+  - **Player-, mission- and server-facing changes:** keybinds, defaults, settings, Eden attributes, scripting API.
+  - **Compatibility:** anything that touches the public API (see Conventions), saved settings, keybind ids, station config or network variables. State clearly whether old missions, add-ons and `cba_settings.sqf` files still work.
+  - **Verification:** what you actually ran (`hemtt build` clean, scripts exercised), and what still **needs in-game or multiplayer testing**. Never imply something was tested in game when it wasn't. Only the user can run Arma.
+  - Use short `Section:` headings or `-` bullet lists when the commit covers more than one thing.
+- End with the attribution trailer the session provides.
+
+Example:
+
+```
+Play in-vehicle radio on the effects channel
+
+Inside a vehicle the radio used playMusic, so it followed the player's
+music slider while every other radio (say3D / playSound3D) followed
+the effects slider. With different slider settings the radio jumped in
+loudness when getting in or out.
+
+Now the in-vehicle radio uses playSoundUI with isEffect = true: still
+non-positional (not muffled by the cabin), but on the effects channel,
+so one slider sets the level everywhere. It also stops taking over the
+mission's music channel. The fadeMusic save/restore is removed.
+
+Compatibility: no API or config changes. CfgMusic is still read for
+track durations and titles, so existing add-ons need no changes.
+
+Verified: hemtt build clean. Needs in-game check that the in-vehicle
+radio sounds clear and that the level matches on getting out.
+```
+
+### Pull requests
+
+Create PRs with `gh pr create` against `main`, and only when asked. Use this structure:
+
+```
+## Summary
+One or two sentences: what this PR does and why.
+
+## Changes
+Grouped by feature. For each: behaviour before → after, and the key
+implementation decision with its reason.
+
+## Player / mission maker / server owner impact
+New or changed keybinds, defaults, settings, Eden attributes, scripting
+functions. "None" if nothing user-facing changed.
+
+## Compatibility
+Public API, settings, keybind ids, station config, network variables.
+Breaking changes called out explicitly, with migration steps.
+
+## Testing
+- [x] hemtt build (clean apart from BBW1)
+- [ ] In-game singleplayer: <specific things to check>
+- [ ] Multiplayer / JIP: <specific things to check>
+
+## Docs
+README / CLAUDE.md sections updated, or why none were needed.
+```
+
+- Tick only the boxes that were actually done. In-game boxes stay unticked unless the user confirms they tested.
+- The title follows the commit subject rules.
+- End the description with the attribution line the session provides.
+- If the version should be bumped for a release, say so in the PR. Don't bump it in feature PRs unless asked.

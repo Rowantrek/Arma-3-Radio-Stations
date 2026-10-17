@@ -7,5 +7,5 @@
  */
 params ["_obj", "_step"];
 
-private _volume = _obj getVariable ["a3r_volume", 1];
+private _volume = _obj getVariable ["a3r_volume", 0.5];
 [_obj, round ((_volume + _step) * 10) / 10] call A3R_fnc_setVolume;

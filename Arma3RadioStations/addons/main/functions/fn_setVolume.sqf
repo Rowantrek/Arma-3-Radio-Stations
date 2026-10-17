@@ -3,7 +3,7 @@
  *
  * Arguments:
  * 0: Radio object or vehicle <OBJECT>
- * 1: Volume, 0 to 1 <NUMBER>
+ * 1: Volume, 0 to 1. 0.5 is the default, normal loudness; 1 is double <NUMBER>
  */
 params ["_obj", "_volume"];
 if (isNull _obj) exitWith {};
@@ -14,4 +14,4 @@ _volume = 0 max _volume min 1;
 _obj setVariable ["a3r_volume", _volume];
 ["a3r_setVolume", [_obj, _volume]] call CBA_fnc_serverEvent;
 
-hintSilent format ["Radio volume: %1", str round (_volume * 100) + "%"];
+[_obj getVariable ["a3r_station", ""], _volume] call A3R_fnc_showNowPlaying;
