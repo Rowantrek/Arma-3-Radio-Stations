@@ -31,7 +31,9 @@ pad() { # file seconds basefreq secondsPerChord chordA chordB chordC chordD (sem
 # Example mission (Arma3RadioStations/.hemtt/missions/a3r_test.VR)
 pad "$OUT/mission/Drift Radio/01 Slow Tide.wav" 64 110 8 0 5 -3 -5
 pad "$OUT/mission/Drift Radio/02 Low Cloud.wav" 60 98 10 0 -2 3 5
+pad "$OUT/mission/Drift Radio/Intermissions/01 Drift Radio ID.wav" 8 220 2 0 7 5 12
 # Add-on template (AddonTemplate/addons/main)
 arp "$OUT/addon/Example FM/01 Example One.wav" 36 196 5 3
 arp "$OUT/addon/Example FM/02 Example Two.wav" 36 247 4 2
+arp "$OUT/addon/Example FM/Intermissions/01 Example FM ID.wav" 6 330 6 2
 echo "Wrote demo music to $OUT"

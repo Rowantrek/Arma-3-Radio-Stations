@@ -62,6 +62,11 @@ private _nowPlaying = [];
             _nowPlaying pushBack _current;
         } else {
             _source call _stop;
+            // The radio you're in moved on to its next song or intermission: show it. A station
+            // change already showed the hint itself, so only the same station counts
+            if (_isInside && {_key != ""} && {(_key splitString "|") select 0 != _playKey} && {(_key splitString ":") select 0 == _station}) then {
+                [_station, _obj getVariable ["a3r_volume", 0.5], _obj getVariable ["a3r_pa", false]] call A3R_fnc_showNowPlaying;
+            };
             private _newSource = call {
                 if (_isInside) exitWith {
                     playSoundUI [[_track] call A3R_fnc_getSoundFile, _volume, 1, true, _offset]

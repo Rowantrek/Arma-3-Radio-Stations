@@ -2,4 +2,6 @@
 class a3r_mymusic_ExampleFM {
     displayName = "Example FM";
     tracks[] = {"a3r_mymusic_ExampleFM_01", "a3r_mymusic_ExampleFM_02"};
+    intermissions[] = {"a3r_mymusic_ExampleFM_INT_01"};
+    intermissionEvery = 2;
 };

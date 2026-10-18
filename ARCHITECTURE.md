@@ -10,12 +10,12 @@ How Arma 3 Radio Stations works, and why the less obvious choices were made. Thi
 
 ## Stations and tracks
 
-A station is a class under `A3R_Stations` with `displayName` and `tracks[]`. Each track class must exist in:
+A station is a class under `A3R_Stations` with `displayName` and `tracks[]`, and optionally `intermissions[]` (clips such as jingles) and `intermissionEvery` (songs between clips, default 2, 0 = none). Each track or clip class must exist in:
 
 - **`CfgMusic`**, for `duration` (drives the schedule) and `name` (the title shown). Its `sound[]` isn't played.
 - **`CfgSounds`**, for `say3D`. The second `sound[]` value is the loudness heard from outside. `<track>_PA` is an optional louder copy, CfgSounds only, pointing at the same `.ogg`.
 
-Tracks missing from either, or with `duration <= 0`, are dropped. A station with no valid tracks is hidden.
+Tracks missing from either, or with `duration <= 0`, are dropped. A station with no valid tracks is hidden, even if it has clips.
 
 | Source | Where | Identified by |
 |---|---|---|
@@ -41,7 +41,11 @@ Sound paths: addons use `\z\<prefix>\addons\<addon>\data\file.ogg`, missions use
 
 ## Schedule (`fn_getTrackAt.sqf`)
 
-Time is `CBA_missionTime` plus a seed derived from the station name, so stations don't change track together. The station loops through its tracks. The function returns `[track, offset, playKey]`, where the play key `"<station>:<cycle>:<index>"` is unique per play. Changing the seed or key format changes what every client hears.
+Time is `CBA_missionTime` plus a seed derived from the station name, so stations don't change track together. The station loops through its tracks. The function returns `[track, offset, playKey, isIntermission]`, where the play key `"<station>:<cycle>:<index>"` is unique per play. Changing the seed or key format changes what every client hears.
+
+- **Intermissions are just tracks in the play order.** The schedule is a flat list built once per station: `intermissionEvery` songs, then one clip, with songs and clips each cycling through their own list. Playback, volume, PA and range need nothing extra, because clips are ordinary CfgMusic + CfgSounds (+ `_PA`) classes.
+- **One cycle is long enough for both lists to end together**, so every cycle sounds the same (capped at 1000 blocks for huge playlists). The track is found by binary search over start times, since these lists can be long.
+- **A station without intermissions has the same order as before**, so existing stations keep their schedule.
 
 ## Playback (`fn_clientUpdate.sqf`, every 0.5 s, clients only)
 
@@ -74,7 +78,7 @@ Time is `CBA_missionTime` plus a seed derived from the station name, so stations
 - **Vehicles: CBA keybinds only.** They act on `A3R_fnc_getTarget`, which returns the player's vehicle or objNull.
 - **Placed radios: scroll menu only.** The actions are added to the player unit through the CBA `"unit"` event. They act on `A3R_fnc_getPlacedRadio`: on foot, looking at the radio, within 3 m.
 - **On/off and resume.** `togglePower` and `cycleStation` turn a radio that's off back on to `a3r_lastStation`. `adjustVolume` steps through 0, 5%, then 10% steps.
-- **One hint.** `A3R_fnc_showNowPlaying` shows station, track, volume and PA, and clears itself after 3 s.
+- **One hint.** `A3R_fnc_showNowPlaying` shows station, track, volume and PA, and clears itself after 3 s. Intermissions show no track name. The sound loop also shows it when the radio of the vehicle you're in starts a new track by itself (play key changed, same station), so station switches don't show it twice.
 - **CBA keeps a player's saved binding over a changed default.** Changing a default key needs a new keybind id, which is why on/off moved from `a3r_off` to `a3r_power`.
 
 ## Settings and caches
@@ -84,7 +88,7 @@ Time is `CBA_missionTime` plus a seed derived from the station name, so stations
 
 ## Import tool (`tools/import_music.ps1`)
 
-- **Input:** each source subfolder becomes a station, and each audio file becomes a track. Leading numbers in file names set the order.
+- **Input:** each source subfolder becomes a station, and each audio file becomes a track. An `Intermissions` subfolder holds the station's clips (`<station>_INT_NN`). Leading numbers in file names set the order.
 - **Conversion:** files are converted to mono 44.1 kHz Vorbis. Mono is required for 3D sound.
 - **Durations** come from ffprobe.
 - **Output:** the tool writes `cfgSounds.hpp` (track + `_PA`, at `$outsideVolume` / `$paVolume`), `cfgMusic.hpp` and `stations.hpp`.
