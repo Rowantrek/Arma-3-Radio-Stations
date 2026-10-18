@@ -4,8 +4,8 @@
 // Set it with tools\bump_version.ps1 before each release.
 #define MAJOR 2026
 #define MINOR 10
-#define PATCHLVL 17
-#define BUILD 2
+#define PATCHLVL 18
+#define BUILD 1
 
 #define A3R_STRINGIFY(x) #x
 #define A3R_TO_STRING(x) A3R_STRINGIFY(x)

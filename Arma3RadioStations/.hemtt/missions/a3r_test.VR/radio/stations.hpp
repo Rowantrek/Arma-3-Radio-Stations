@@ -2,4 +2,6 @@
 class Mission_DriftRadio {
     displayName = "Drift Radio";
     tracks[] = {"Mission_DriftRadio_01", "Mission_DriftRadio_02"};
+    intermissions[] = {"Mission_DriftRadio_INT_01"};
+    intermissionEvery = 2;
 };

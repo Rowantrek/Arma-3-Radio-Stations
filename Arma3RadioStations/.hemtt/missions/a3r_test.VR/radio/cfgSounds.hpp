@@ -3,3 +3,5 @@ class Mission_DriftRadio_01 { name = "Slow Tide"; sound[] = {"radio\mission_drif
 class Mission_DriftRadio_01_PA { name = "Slow Tide"; sound[] = {"radio\mission_driftradio_01slowtide.ogg", 3.25, 1}; titles[] = {}; };
 class Mission_DriftRadio_02 { name = "Low Cloud"; sound[] = {"radio\mission_driftradio_02lowcloud.ogg", 1.25, 1}; titles[] = {}; };
 class Mission_DriftRadio_02_PA { name = "Low Cloud"; sound[] = {"radio\mission_driftradio_02lowcloud.ogg", 3.25, 1}; titles[] = {}; };
+class Mission_DriftRadio_INT_01 { name = "Drift Radio ID"; sound[] = {"radio\mission_driftradio_int_01driftradioid.ogg", 1.25, 1}; titles[] = {}; };
+class Mission_DriftRadio_INT_01_PA { name = "Drift Radio ID"; sound[] = {"radio\mission_driftradio_int_01driftradioid.ogg", 3.25, 1}; titles[] = {}; };

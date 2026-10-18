@@ -20,6 +20,7 @@ Every vehicle has a radio, modded vehicles included, and there is a placeable ra
 - **Placeable radio.** *Music Radio* in Eden and Zeus (*Things > Radios*), heard in 3D around it like a loudspeaker.
 - **PA.** Vehicles can play their radio through an outside speaker, much louder and further than the normal outside sound.
 - **Live stations.** Each station is a looping playlist that keeps playing whether anyone listens or not. Tuning in joins the current song mid-way.
+- **Intermissions.** A station can have jingles, station IDs or adverts that play between songs, by default one after every 2 songs. They cycle through in order like the songs, use the same volume, PA and range, and their names are never shown.
 - **Lightweight in multiplayer.** Only the station, volume and PA choices go over the network. Timing comes from the synced mission clock.
 - **No music included.** Arma 3 Radio Stations is the radio, not the music. Music comes from missions or from separate music add-on mods, which can be used together and switched on or off per server or per mission:
 
@@ -52,7 +53,7 @@ Arma can't stream audio or play files from a player's own disk. Every player nee
 | **PA** | Plays a vehicle's radio through its outside speaker: 2.6× as loud outside, heard up to the *PA range* setting (50 m at 50 % volume). Occupants hear no difference. Shown as *PA* in the radio popup |
 | **Your game volume** | All radios follow your **effects** volume, inside and outside vehicles |
 
-Turning a radio back on, with on/off or next/previous, returns it to the station it was last on. Switching station or changing the volume shows the station, the current song and the volume for 3 seconds.
+Turning a radio back on, with on/off or next/previous, returns it to the station it was last on. Switching station, changing the volume, or the radio of the vehicle you're in starting a new song or intermission shows the station, the current song and the volume for 3 seconds. During an intermission only the station is shown.
 
 ---
 
@@ -82,7 +83,7 @@ this setVariable ["a3r_hasRadio", false, true]; // in the vehicle's init: no rad
 [_vehicle, "Mission_DriftRadio"] call A3R_fnc_setStation; // tune: station class, "random", or "" for off
 [_vehicle, 0.5] call A3R_fnc_setVolume;                 // volume 0-1: 0.5 normal (default), 1 double
 call A3R_fnc_getStations;                               // active station class names
-["Mission_DriftRadio"] call A3R_fnc_getTrackAt;         // [track class, seconds into track, play id]
+["Mission_DriftRadio"] call A3R_fnc_getTrackAt;         // [track class, seconds into track, play id, is intermission]
 ```
 
 ### Adding your own stations to a mission
@@ -160,7 +161,7 @@ Radios use very little bandwidth: a variable on each radio changes only when som
 
 ## For mod makers (music add-ons)
 
-A music add-on is a separate mod that only contains music. Its stations show up on every radio, in every mission. [`AddonTemplate/`](AddonTemplate) is a complete, buildable example with one station, *Example FM*.
+A music add-on is a separate mod that only contains music. Its stations show up on every radio, in every mission. [`AddonTemplate/`](AddonTemplate) is a complete, buildable example with one station, *Example FM*, which plays an intermission clip after every 2 songs.
 
 **You need:** [HEMTT](https://hemtt.dev) (`winget install BrettMayson.HEMTT`) and ffmpeg (`winget install Gyan.FFmpeg`).
 
@@ -185,6 +186,8 @@ music/
   Unit FM/
     01 Opening Song.mp3
     02 Another Song.flac
+    Intermissions/         optional: jingles or station IDs, one after every 2 songs
+      01 Unit FM ID.ogg
   Night Shift/
     ...
 ```
@@ -232,10 +235,12 @@ To publish on the Steam Workshop, upload `.hemttout/release` with *Arma 3 Publis
 <music folder>/
   Station Name/          one folder per station; the folder name is the station name
     01 Song Title.mp3    one file per track; file names become titles, leading numbers set the order
+    Intermissions/       optional: clips played between songs, ordered the same way
+      01 Station ID.mp3
 ```
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools\import_music.ps1 -Source <music folder> -Target <addon or mission folder> [-ClassPrefix <prefix>] [-Quality 0-10]
+powershell -ExecutionPolicy Bypass -File tools\import_music.ps1 -Source <music folder> -Target <addon or mission folder> [-ClassPrefix <prefix>] [-Quality 0-10] [-IntermissionEvery <songs>]
 ```
 
 | Target | Audio goes to | Configs go to | Class prefix |
@@ -246,6 +251,7 @@ powershell -ExecutionPolicy Bypass -File tools\import_music.ps1 -Source <music f
 - Converts `.mp3 .wav .flac .ogg .m4a .aac .wma .opus` to mono Ogg Vorbis, the format Arma needs for 3D sound.
 - Writes each track twice in `CfgSounds`: normal, and a louder `_PA` copy, used for vehicle PAs and placed radios. Music imported with an older version of the tool still works, but its PA is only further, not louder, and vehicles heard from outside are 25 % quieter. Re-run the tool to update it.
 - Writes the exact track lengths, which the station schedule depends on.
+- Imports a station's `Intermissions` folder as its intermission clips (classes `<station>_INT_NN`), played after every `-IntermissionEvery` songs (default 2). Clip file names can be anything: they play in natural order (`Clip 2` before `Clip 10`) and aren't shown in game.
 - Skips files that are already converted and unchanged, and warns about `.ogg` files no station uses.
 
 ### Station config reference
@@ -264,6 +270,8 @@ class A3R_Stations {
     class My_Station {
         displayName = "My Station";
         tracks[] = {"My_Track_01"};
+        intermissions[] = {"My_Jingle_01"}; // optional: clips between songs, same CfgSounds/CfgMusic classes as tracks
+        intermissionEvery = 2;              // optional: songs between clips, default 2, 0 = no clips
     };
 };
 ```

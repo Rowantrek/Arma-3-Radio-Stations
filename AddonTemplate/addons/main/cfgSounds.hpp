@@ -3,3 +3,5 @@ class a3r_mymusic_ExampleFM_01 { name = "Example One"; sound[] = {"\z\a3r_mymusi
 class a3r_mymusic_ExampleFM_01_PA { name = "Example One"; sound[] = {"\z\a3r_mymusic\addons\main\data\a3r_mymusic_examplefm_01exampleone.ogg", 3.25, 1}; titles[] = {}; };
 class a3r_mymusic_ExampleFM_02 { name = "Example Two"; sound[] = {"\z\a3r_mymusic\addons\main\data\a3r_mymusic_examplefm_02exampletwo.ogg", 1.25, 1}; titles[] = {}; };
 class a3r_mymusic_ExampleFM_02_PA { name = "Example Two"; sound[] = {"\z\a3r_mymusic\addons\main\data\a3r_mymusic_examplefm_02exampletwo.ogg", 3.25, 1}; titles[] = {}; };
+class a3r_mymusic_ExampleFM_INT_01 { name = "Example FM ID"; sound[] = {"\z\a3r_mymusic\addons\main\data\a3r_mymusic_examplefm_int_01examplefmid.ogg", 1.25, 1}; titles[] = {}; };
+class a3r_mymusic_ExampleFM_INT_01_PA { name = "Example FM ID"; sound[] = {"\z\a3r_mymusic\addons\main\data\a3r_mymusic_examplefm_int_01examplefmid.ogg", 3.25, 1}; titles[] = {}; };

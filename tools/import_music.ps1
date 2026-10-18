@@ -7,6 +7,11 @@ Each subfolder of -Source becomes one station (folder name = station name). Each
 becomes a track (file name = track title), played in alphabetical order. Prefix file names with
 01, 02, ... to set the order.
 
+An "Intermissions" subfolder inside a station folder holds that station's intermission clips
+(jingles, station IDs, adverts). One clip plays after every -IntermissionEvery songs (default 2),
+and the clips cycle through in order. Clip file names can be anything: they're played in natural
+order (Clip 2 before Clip 10) and never shown in game.
+
 Files are converted to mono Ogg Vorbis with ffmpeg, and cfgSounds.hpp, cfgMusic.hpp and
 stations.hpp are rewritten with the exact track lengths. Re-run it whenever the music changes;
 files that are already converted and unchanged are skipped.
@@ -29,7 +34,9 @@ param(
     # Prefix for generated class names. Default: from the addon prefix, or "Mission".
     [string]$ClassPrefix,
     # Vorbis quality 0-10; 4 is about 0.5 MB per minute in mono.
-    [ValidateRange(0, 10)][int]$Quality = 4
+    [ValidateRange(0, 10)][int]$Quality = 4,
+    # Songs between intermission clips, for stations with an Intermissions folder.
+    [ValidateRange(1, 100)][int]$IntermissionEvery = 2
 )
 $ErrorActionPreference = 'Stop'
 $inv = [Globalization.CultureInfo]::InvariantCulture
@@ -84,7 +91,52 @@ $music = New-Object System.Collections.Generic.List[string]
 $stations = New-Object System.Collections.Generic.List[string]
 $usedOggs = New-Object System.Collections.Generic.HashSet[string]
 $stationNames = @{}
-$totalSeconds = 0
+$script:totalSeconds = 0
+
+# -Natural sorts numbers by value (Clip 2 before Clip 10). Songs keep the plain alphabetical
+# order so re-importing an existing station doesn't reorder it.
+function Get-AudioFiles([string]$Folder, [switch]$Natural) {
+    $files = Get-ChildItem -LiteralPath $Folder -File | Where-Object { $audioExtensions -contains $_.Extension.ToLower() }
+    if ($Natural) {
+        @($files | Sort-Object { [regex]::Replace($_.Name, '\d+', { $args[0].Value.PadLeft(20, '0') }) }, Name)
+    } else {
+        @($files | Sort-Object Name)
+    }
+}
+
+# Converts the files and adds their CfgSounds (track + _PA) and CfgMusic classes.
+# Classes are <ClassBase>_NN; .ogg files are named <OggBase>_<file name>. Returns the class names.
+function Import-Tracks($Files, [string]$ClassBase, [string]$OggBase, [string]$Label) {
+    $index = 0
+    foreach ($file in $Files) {
+        $index++
+        $trackClass = '{0}_{1:D2}' -f $ClassBase, $index
+
+        # Named after the source file, so reordering tracks doesn't force a re-convert
+        $oggName = ('{0}_{1}.ogg' -f $OggBase, (ConvertTo-ClassName $file.BaseName)).ToLower()
+        # File names with no usable characters, or that clash once cleaned up, fall back to the number
+        if ((ConvertTo-ClassName $file.BaseName) -eq '' -or $usedOggs.Contains($oggName)) { $oggName = ('{0}_{1:D2}.ogg' -f $OggBase, $index).ToLower() }
+        [void]$usedOggs.Add($oggName)
+        $ogg = Join-Path $dataDir $oggName
+
+        if (-not (Test-Path -LiteralPath $ogg) -or (Get-Item -LiteralPath $ogg).LastWriteTime -lt $file.LastWriteTime) {
+            Write-Host "Converting $Label\$($file.Name)"
+            & ffmpeg -nostdin -y -loglevel error -i $file.FullName -vn -map_metadata -1 -ac 1 -ar 44100 -c:a libvorbis -q:a $Quality $ogg
+            if ($LASTEXITCODE -ne 0) { throw "ffmpeg failed on $($file.FullName)" }
+        }
+
+        $durationText = & ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 $ogg
+        $duration = [math]::Round([double]::Parse(($durationText | Select-Object -First 1).Trim(), $inv), 2)
+        $script:totalSeconds += $duration
+
+        $title = $file.BaseName -replace '^\d+[\s._-]+', '' -replace '"', "'"
+        $path = "$soundPath\$oggName"
+        $sounds.Add([string]::Format($inv, 'class {0} {{ name = "{1}"; sound[] = {{"{2}", {3}, 1}}; titles[] = {{}}; }};', $trackClass, $title, $path, $outsideVolume))
+        $sounds.Add([string]::Format($inv, 'class {0}_PA {{ name = "{1}"; sound[] = {{"{2}", {3}, 1}}; titles[] = {{}}; }};', $trackClass, $title, $path, $paVolume))
+        $music.Add([string]::Format($inv, 'class {0} {{ name = "{1}"; sound[] = {{"{2}", 1, 1}}; duration = {3}; }};', $trackClass, $title, $path, $duration))
+        $trackClass
+    }
+}
 
 foreach ($dir in $stationDirs) {
     $stationClass = "${ClassPrefix}_$(ConvertTo-ClassName $dir.Name)"
@@ -93,46 +145,28 @@ foreach ($dir in $stationDirs) {
     }
     $stationNames[$stationClass] = $dir.Name
 
-    $files = @(Get-ChildItem -LiteralPath $dir.FullName -File |
-        Where-Object { $audioExtensions -contains $_.Extension.ToLower() } | Sort-Object Name)
+    $files = Get-AudioFiles $dir.FullName
     if ($files.Count -eq 0) {
         Write-Warning "Skipping station '$($dir.Name)': no audio files."
         continue
     }
+    $trackClasses = @(Import-Tracks $files $stationClass $stationClass $dir.Name)
 
-    $trackClasses = @()
-    $index = 0
-    foreach ($file in $files) {
-        $index++
-        $trackClass = '{0}_{1:D2}' -f $stationClass, $index
-
-        # Named after the source file, so reordering tracks doesn't force a re-convert
-        $oggName = ('{0}_{1}.ogg' -f $stationClass, (ConvertTo-ClassName $file.BaseName)).ToLower()
-        if ($usedOggs.Contains($oggName)) { $oggName = ('{0}_{1:D2}.ogg' -f $stationClass, $index).ToLower() }
-        [void]$usedOggs.Add($oggName)
-        $ogg = Join-Path $dataDir $oggName
-
-        if (-not (Test-Path -LiteralPath $ogg) -or (Get-Item -LiteralPath $ogg).LastWriteTime -lt $file.LastWriteTime) {
-            Write-Host "Converting $($dir.Name)\$($file.Name)"
-            & ffmpeg -nostdin -y -loglevel error -i $file.FullName -vn -map_metadata -1 -ac 1 -ar 44100 -c:a libvorbis -q:a $Quality $ogg
-            if ($LASTEXITCODE -ne 0) { throw "ffmpeg failed on $($file.FullName)" }
-        }
-
-        $durationText = & ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 $ogg
-        $duration = [math]::Round([double]::Parse(($durationText | Select-Object -First 1).Trim(), $inv), 2)
-        $totalSeconds += $duration
-
-        $title = $file.BaseName -replace '^\d+[\s._-]+', '' -replace '"', "'"
-        $path = "$soundPath\$oggName"
-        $sounds.Add([string]::Format($inv, 'class {0} {{ name = "{1}"; sound[] = {{"{2}", {3}, 1}}; titles[] = {{}}; }};', $trackClass, $title, $path, $outsideVolume))
-        $sounds.Add([string]::Format($inv, 'class {0}_PA {{ name = "{1}"; sound[] = {{"{2}", {3}, 1}}; titles[] = {{}}; }};', $trackClass, $title, $path, $paVolume))
-        $music.Add([string]::Format($inv, 'class {0} {{ name = "{1}"; sound[] = {{"{2}", 1, 1}}; duration = {3}; }};', $trackClass, $title, $path, $duration))
-        $trackClasses += $trackClass
+    $clipDir = Join-Path $dir.FullName 'Intermissions'
+    $clipClasses = @()
+    if (Test-Path -LiteralPath $clipDir -PathType Container) {
+        $clipFiles = Get-AudioFiles $clipDir -Natural
+        $clipClasses = @(Import-Tracks $clipFiles "${stationClass}_INT" "${stationClass}_int" "$($dir.Name)\Intermissions")
     }
 
     $trackList = ($trackClasses | ForEach-Object { "`"$_`"" }) -join ', '
-    $stations.Add("class $stationClass {`r`n    displayName = `"$($dir.Name -replace '"', "'")`";`r`n    tracks[] = {$trackList};`r`n};")
-    Write-Host ("Station {0} ({1}): {2} tracks" -f $dir.Name, $stationClass, $trackClasses.Count)
+    $body = "    displayName = `"$($dir.Name -replace '"', "'")`";`r`n    tracks[] = {$trackList};"
+    if ($clipClasses.Count -gt 0) {
+        $clipList = ($clipClasses | ForEach-Object { "`"$_`"" }) -join ', '
+        $body += "`r`n    intermissions[] = {$clipList};`r`n    intermissionEvery = $IntermissionEvery;"
+    }
+    $stations.Add("class $stationClass {`r`n$body`r`n};")
+    Write-Host ("Station {0} ({1}): {2} tracks, {3} intermissions" -f $dir.Name, $stationClass, $trackClasses.Count, $clipClasses.Count)
 }
 
 $header = "// Generated by import_music.ps1 from '$(Split-Path $Source -Leaf)'. Re-run the script after changing the music.`r`n"
@@ -145,4 +179,4 @@ Get-ChildItem -LiteralPath $dataDir -Filter *.ogg | Where-Object { -not $usedOgg
 }
 
 $sizeMB = (Get-ChildItem -LiteralPath $dataDir -Filter *.ogg | Measure-Object Length -Sum).Sum / 1MB
-Write-Host ("Done: {0} stations, {1:N0} min of music, {2:N1} MB in {3}" -f $stations.Count, ($totalSeconds / 60), $sizeMB, $dataDir)
+Write-Host ("Done: {0} stations, {1:N0} min of music, {2:N1} MB in {3}" -f $stations.Count, ($script:totalSeconds / 60), $sizeMB, $dataDir)
